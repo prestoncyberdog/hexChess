@@ -3,7 +3,10 @@
 --- !u!78 &1
 TagManager:
   serializedVersion: 2
-  tags: []
+  tags:
+  - gameManager
+  - tile
+  - piece
   layers:
   - Default
   - TransparentFX
@@ -40,4 +43,10 @@ TagManager:
   m_SortingLayers:
   - name: Default
     uniqueID: 0
+    locked: 0
+  - name: tile
+    uniqueID: 2712291725
+    locked: 0
+  - name: piece
+    uniqueID: 1179710421
     locked: 0
