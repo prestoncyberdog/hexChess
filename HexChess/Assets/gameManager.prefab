@@ -46,4 +46,6 @@ MonoBehaviour:
   Tile: {fileID: 6219622447565799817, guid: 0115090a58cee974d83b473d897894cb, type: 3}
   Pieces:
   - {fileID: 972764397826057050, guid: 121858e30615516499305cbc4bb07ac5, type: 3}
+  EnemyManager: {fileID: 3087165918241259408, guid: 113d1f631c9d9544e997ace5517c582d,
+    type: 3}
   bm: {fileID: 0}

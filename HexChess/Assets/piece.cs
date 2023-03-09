@@ -20,11 +20,15 @@ public class piece : MonoBehaviour
     public int moveRange;
     public int value;
     public int team;
+    public bool alive;
+    public tile intention;//used by AI
 
     public tile thisTile;
     public tile newTile;
     public float moveRate;
     public bool exhausted;
+    public piece capturing;
+    public List<tile> candidates;
 
     public void init()
     {
@@ -38,8 +42,8 @@ public class piece : MonoBehaviour
         setColor();
 
         value = 1;
-        team = 0;
         exhausted = false;
+        alive = true;
         specificInit();
     }
 
@@ -69,11 +73,22 @@ public class piece : MonoBehaviour
             transform.position = newTile.transform.position;
             newTile = null;
             setColor();
+            if (capturing != null)
+            {
+                capturing.getCaptured();
+                capturing = null;
+            }
         }
         else
         {
             transform.position = transform.position + toNextTile.normalized * moveRate * Time.deltaTime;
         }
+    }
+
+    public void getCaptured()
+    {
+        alive = false;
+        Destroy(gameObject);
     }
 
     public void setColor()
@@ -96,32 +111,36 @@ public class piece : MonoBehaviour
         }
     }
 
-    public void findAllCandidates()
+    public void findAllCandidates(bool showHighlights)
     {
-        bm.resetTiles();
-        thisTile.gameObject.GetComponent<SpriteRenderer>().color = thisTile.selectedColor;
+        bm.resetTiles(showHighlights);
+        if (showHighlights)
+        {
+            thisTile.gameObject.GetComponent<SpriteRenderer>().color = thisTile.selectedColor;
+        }
+        candidates = new List<tile>();
         if (exhausted)
         {
             return;
         }
         if (moveType == STEP)
         {
-            planPathsWithObtacles(); 
+            planPathsWithObtacles(showHighlights); 
         }
         else if (moveType == JUMP)
         {
-            planPathsWithoutObtacles();
+            planPathsWithoutObtacles(showHighlights);
         }
         else if (moveType == LINE)
         {
-            planPathsInALine();
+            planPathsInALine(showHighlights);
         }
     }
 
 
 
     //breadth first search of tiles not recursing on unavailable tiles
-    public void planPathsWithObtacles()
+    public void planPathsWithObtacles(bool showHighlights)
     {
         Queue q = new Queue();
         q.Enqueue(thisTile);
@@ -139,14 +158,19 @@ public class piece : MonoBehaviour
                     if (activeTile.distance < moveRange && 
                         otherTile.distance > activeTile.distance + 1 && 
                         (otherTile.thisPiece == null || otherTile.thisPiece.team != team) &&
-                        otherTile.obstacle == 0)
+                        otherTile.obstacle == 0 &&
+                        (activeTile == thisTile || activeTile.thisPiece == null))
                     {
                         q.Enqueue(otherTile);
                         otherTile.distance = activeTile.distance + 1;
                         if (otherTile.distance <= moveRange) // here, otherTile is a candidate we can move to
                         {
                             otherTile.targeted[0] = value;
-                            otherTile.gameObject.GetComponent<SpriteRenderer>().color = otherTile.candidateColor;
+                            candidates.Add(otherTile);
+                            if (showHighlights)
+                            {
+                                otherTile.gameObject.GetComponent<SpriteRenderer>().color = otherTile.candidateColor;
+                            }
                         }
                     }
                 }
@@ -155,7 +179,7 @@ public class piece : MonoBehaviour
     }
 
     //breadth first search of tiles that will recurse on unavailable tiles
-    public void planPathsWithoutObtacles()
+    public void planPathsWithoutObtacles(bool showHighlights)
     {
         Queue q = new Queue();
         q.Enqueue(thisTile);
@@ -179,7 +203,11 @@ public class piece : MonoBehaviour
                              otherTile.obstacle == 0) // here, otherTile is a candidate we can move to
                         {
                             otherTile.targeted[0] = value;
-                            otherTile.gameObject.GetComponent<SpriteRenderer>().color = otherTile.candidateColor;
+                            candidates.Add(otherTile);
+                            if (showHighlights)
+                            {
+                                otherTile.gameObject.GetComponent<SpriteRenderer>().color = otherTile.candidateColor;
+                            }
                         }
                     }
                 }
@@ -188,7 +216,7 @@ public class piece : MonoBehaviour
     }
 
     //depth first search of tiles that will only recurse in one direction at a time, blocked by unavailable tiles
-    public void planPathsInALine()
+    public void planPathsInALine(bool showHighlights)
     {
         thisTile.distance = 0;
         tile activeTile;
@@ -206,14 +234,19 @@ public class piece : MonoBehaviour
                     if (activeTile.distance < moveRange &&
                         otherTile.distance > activeTile.distance + 1 &&
                         (otherTile.thisPiece == null || otherTile.thisPiece.team != team) &&
-                        otherTile.obstacle == 0)
+                        otherTile.obstacle == 0 &&
+                        (activeTile == thisTile || activeTile.thisPiece == null))
                     {
                         continueSearch = true;
                         otherTile.distance = activeTile.distance + 1;
                         if (otherTile.distance <= moveRange) // here, otherTile is a candidate we can move to
                         {
                             otherTile.targeted[0] = value;
-                            otherTile.gameObject.GetComponent<SpriteRenderer>().color = otherTile.candidateColor;
+                            candidates.Add(otherTile);
+                            if (showHighlights)
+                            {
+                                otherTile.gameObject.GetComponent<SpriteRenderer>().color = otherTile.candidateColor;
+                            }
                         }
                         activeTile = otherTile;
                     }

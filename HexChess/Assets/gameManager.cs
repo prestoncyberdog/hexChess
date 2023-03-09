@@ -7,6 +7,7 @@ public class gameManager : MonoBehaviour
 {
     public Transform Tile;
     public Transform[] Pieces;
+    public Transform EnemyManager;
 
     public battleManager bm;
 

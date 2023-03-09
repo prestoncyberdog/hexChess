@@ -51,21 +51,25 @@ public class tile : MonoBehaviour
     {
         if (Input.GetMouseButtonDown(0))
         {
-            if (bm.selectedPiece != null && !bm.selectedPiece.exhausted && targeted[0] == bm.selectedPiece.value)
+            if (bm.selectedPiece != null && !bm.selectedPiece.exhausted && targeted[0] == bm.selectedPiece.value && bm.selectedPiece.team == 0 && bm.playersTurn)
             {
+                if (thisPiece != null)
+                {
+                    bm.selectedPiece.capturing = thisPiece;
+                }
                 thisPiece = bm.selectedPiece;
                 thisPiece.exhausted = true;
                 thisPiece.newTile = this;
                 thisPiece.thisTile.thisPiece = null;
                 thisPiece.thisTile = this;
-                bm.resetTiles();
+                bm.resetTiles(true);
             }
             if (thisPiece != null)
             {
                 bm.selectedPiece = thisPiece;
                 bm.justClicked = true;
-                thisPiece.findAllCandidates();
-                if (!thisPiece.exhausted)
+                thisPiece.findAllCandidates(true);
+                if (!thisPiece.exhausted && thisPiece.team == 0 && bm.playersTurn)
                 {
                     bm.holdingPiece = true;
                 }
@@ -76,6 +80,10 @@ public class tile : MonoBehaviour
         {
             if (bm.selectedPiece != null && bm.holdingPiece && !bm.selectedPiece.exhausted && targeted[0] == bm.selectedPiece.value)
             {
+                if (thisPiece != null)
+                {
+                    thisPiece.getCaptured();
+                }
                 bm.holdingPiece = false;
                 thisPiece = bm.selectedPiece;
                 thisPiece.transform.position = transform.position;
@@ -83,7 +91,7 @@ public class tile : MonoBehaviour
                 thisPiece.setColor();
                 thisPiece.thisTile.thisPiece = null;
                 thisPiece.thisTile = this;
-                thisPiece.findAllCandidates();//resets highlighting and selects piece again
+                thisPiece.findAllCandidates(true);//resets highlighting and selects piece again
             }
         }
     }

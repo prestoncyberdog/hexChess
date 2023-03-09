@@ -6,6 +6,7 @@ using UnityEngine.SceneManagement;
 public class battleManager : MonoBehaviour
 {
     public gameManager gm;
+    public enemyManager em;
 
     public tile root;
     public tile[] allTiles;
@@ -16,16 +17,21 @@ public class battleManager : MonoBehaviour
     public piece selectedPiece;
     public bool holdingPiece;
     public bool justClicked;
+    public bool playersTurn;
 
     void Start()
     {
         gm = GameObject.FindGameObjectWithTag("gameManager").GetComponent<gameManager>();
         gm.bm = this;
+        em = Instantiate(gm.EnemyManager, transform.position, Quaternion.identity).GetComponent<enemyManager>();
+        
 
         spacingFactor = 1.1f;
         mapRadius = 7;
         tileScale = 0.15f;
         spawnMap();
+        em.init();
+        playersTurn = true;
 
         //for now, manually force some pieces onto the board
         for (int i = 0;i<40;i++)
@@ -36,6 +42,7 @@ public class battleManager : MonoBehaviour
                 piece newPiece = Instantiate(gm.Pieces[0], place.transform.position, Quaternion.identity).GetComponent<piece>();
                 newPiece.thisTile = place;
                 place.thisPiece = newPiece;
+                newPiece.team = 0;
                 newPiece.init();
             }
         }
@@ -43,10 +50,16 @@ public class battleManager : MonoBehaviour
 
     void Update()
     {
+        if (Input.GetKeyDown(KeyCode.Space) && playersTurn)
+        {
+            playersTurn = false;
+            em.takeTurn();
+        }
+
         if (Input.GetMouseButtonDown(0) && !justClicked)
         {
             selectedPiece = null;
-            resetTiles();
+            resetTiles(true);
         }
         else
         {
@@ -66,14 +79,17 @@ public class battleManager : MonoBehaviour
     }
 
     //reset distance measures, availability, and highlighting for all tiles
-    public void resetTiles()
+    public void resetTiles(bool showHighlights)
     {
         for (int i = 0; i < allTiles.Length; i++)
         {
             tile temp = allTiles[i];
             temp.targeted = new int[2];
             temp.distance = 1000;
-            temp.gameObject.GetComponent<SpriteRenderer>().color = temp.defaultColor;
+            if (showHighlights)
+            {
+                temp.gameObject.GetComponent<SpriteRenderer>().color = temp.defaultColor;
+            }
         }
     }
 
