@@ -51,11 +51,39 @@ public class tile : MonoBehaviour
     {
         if (Input.GetMouseButtonDown(0))
         {
+            if (bm.selectedPiece != null && !bm.selectedPiece.exhausted && targeted[0] == bm.selectedPiece.value)
+            {
+                thisPiece = bm.selectedPiece;
+                thisPiece.exhausted = true;
+                thisPiece.newTile = this;
+                thisPiece.thisTile.thisPiece = null;
+                thisPiece.thisTile = this;
+                bm.resetTiles();
+            }
             if (thisPiece != null)
             {
                 bm.selectedPiece = thisPiece;
-                thisPiece.findAllCandidates();
                 bm.justClicked = true;
+                thisPiece.findAllCandidates();
+                if (!thisPiece.exhausted)
+                {
+                    bm.holdingPiece = true;
+                }
+            }
+        }
+
+        if (Input.GetMouseButtonUp(0))
+        {
+            if (bm.selectedPiece != null && bm.holdingPiece && !bm.selectedPiece.exhausted && targeted[0] == bm.selectedPiece.value)
+            {
+                bm.holdingPiece = false;
+                thisPiece = bm.selectedPiece;
+                thisPiece.transform.position = transform.position;
+                thisPiece.exhausted = true;
+                thisPiece.setColor();
+                thisPiece.thisTile.thisPiece = null;
+                thisPiece.thisTile = this;
+                thisPiece.findAllCandidates();//resets highlighting and selects piece again
             }
         }
     }

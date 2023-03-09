@@ -14,6 +14,7 @@ public class battleManager : MonoBehaviour
     public int mapRadius;
 
     public piece selectedPiece;
+    public bool holdingPiece;
     public bool justClicked;
 
     void Start()
@@ -30,10 +31,13 @@ public class battleManager : MonoBehaviour
         for (int i = 0;i<40;i++)
         {
             tile place = allTiles[Random.Range(0, allTiles.Length)];
-            piece newPiece = Instantiate(gm.Pieces[0], place.transform.position, Quaternion.identity).GetComponent<piece>();
-            newPiece.thisTile = place;
-            place.thisPiece = newPiece;
-            newPiece.init();
+            if (place.thisPiece == null)
+            {
+                piece newPiece = Instantiate(gm.Pieces[0], place.transform.position, Quaternion.identity).GetComponent<piece>();
+                newPiece.thisTile = place;
+                place.thisPiece = newPiece;
+                newPiece.init();
+            }
         }
     }
 
@@ -49,6 +53,16 @@ public class battleManager : MonoBehaviour
             justClicked = false;//if a tile is clicked, it sets this to true
             //this means we can select/deselect pieces regardless of update order
         }
+
+        if (holdingPiece)
+        {
+            selectedPiece.transform.position = Camera.main.ScreenToWorldPoint(Input.mousePosition) + new Vector3(0,0,10);
+            if (Input.GetMouseButtonUp(0))
+            {
+                holdingPiece = false;
+                selectedPiece.transform.position = selectedPiece.thisTile.transform.position;
+            }
+        }
     }
 
     //reset distance measures, availability, and highlighting for all tiles
@@ -61,6 +75,22 @@ public class battleManager : MonoBehaviour
             temp.distance = 1000;
             temp.gameObject.GetComponent<SpriteRenderer>().color = temp.defaultColor;
         }
+    }
+
+    public tile findNearestTileToMouse()
+    {
+        tile nearest = allTiles[0];
+        Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        float minDist = (mousePos - nearest.transform.position).magnitude;
+        for (int i = 0;i < allTiles.Length;i++)
+        {
+            if ((mousePos - allTiles[i].transform.position).magnitude < minDist)
+            {
+                nearest = allTiles[i];
+                minDist = (mousePos - nearest.transform.position).magnitude;
+            }
+        }
+        return nearest;
     }
 
     public void spawnMap()
