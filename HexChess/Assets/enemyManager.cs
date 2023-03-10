@@ -60,11 +60,11 @@ public class enemyManager : MonoBehaviour
     public void takeTurn()
     {
         findAllPieces();
-        unexhaustPieces(0);
+        unexhaustPieces();
 
         decideActions();
         //begin moving pieces
-        if (moveOrder[0] == null)
+        if (moveOrder.Count == 0)
         {
             endTurn();
         }
@@ -81,15 +81,17 @@ public class enemyManager : MonoBehaviour
         for (int i = 0;i<enemyPieces.Count;i++)
         {
             moveOrder.Add(enemyPieces[i]);
-            enemyPieces[i].findAllCandidates(false);
+            //enemyPieces[i].findAllCandidates();
             enemyPieces[i].intention = enemyPieces[i].thisTile;
         }
     }
 
     public void endTurn()
     {
-        unexhaustPieces(1);
+        unexhaustPieces();
         bm.playersTurn = true;
+        bm.selectedPiece = null;
+        bm.resetHighlighting();
     }
 
     public void movePiece(piece currentPiece)
@@ -105,10 +107,7 @@ public class enemyManager : MonoBehaviour
             movePiece(moveOrder[moveIndex]);
             return;
         }
-        currentPiece.exhausted = true;
-        currentPiece.newTile = currentPiece.intention;
-        currentPiece.thisTile.thisPiece = null;
-        currentPiece.thisTile = currentPiece.newTile;
+        currentPiece.moveToTile(currentPiece.intention);
     }
 
     public void findAllPieces()
@@ -120,29 +119,33 @@ public class enemyManager : MonoBehaviour
         for (int i = 0;i < pieceGameObjects.Length;i++)
         {
             currentPiece = pieceGameObjects[i].GetComponent<piece>();
-            if (currentPiece.alive && currentPiece.team == 0)
-            {
-                playersPieces.Add(currentPiece);
-            }
-            else if (currentPiece.alive && currentPiece.team == 1)
-            {
-                enemyPieces.Add(currentPiece);
+            if (currentPiece.alive)
+            { 
+                bm.allPieces.Add(currentPiece);
+                if (currentPiece.team == 0)
+                {
+                    playersPieces.Add(currentPiece);
+                }
+                else if (currentPiece.team == 1)
+                {
+                    enemyPieces.Add(currentPiece);
+                }
             }
         }
     }
 
-    //unexhaust all pieces of the selected team
-    public void unexhaustPieces(int team)
+    //unexhaust all pieces 
+    public void unexhaustPieces()
     {
-        List<piece> somePieces = playersPieces;
-        if (team == 1)
+        for (int i = 0;i< playersPieces.Count;i++)
         {
-            somePieces = enemyPieces;
+            playersPieces[i].exhausted = false;
+            playersPieces[i].setColor();
         }
-        for (int i = 0;i<somePieces.Count;i++)
+        for (int i = 0; i < enemyPieces.Count; i++)
         {
-            somePieces[i].exhausted = false;
-            somePieces[i].setColor();
+            enemyPieces[i].exhausted = false;
+            enemyPieces[i].setColor();
         }
     }
 }

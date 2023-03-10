@@ -10,6 +10,7 @@ public class battleManager : MonoBehaviour
 
     public tile root;
     public tile[] allTiles;
+    public List<piece> allPieces;
     public float spacingFactor;
     public float tileScale;
     public int mapRadius;
@@ -24,8 +25,8 @@ public class battleManager : MonoBehaviour
         gm = GameObject.FindGameObjectWithTag("gameManager").GetComponent<gameManager>();
         gm.bm = this;
         em = Instantiate(gm.EnemyManager, transform.position, Quaternion.identity).GetComponent<enemyManager>();
-        
 
+        allPieces = new List<piece>();
         spacingFactor = 1.1f;
         mapRadius = 7;
         tileScale = 0.15f;
@@ -46,6 +47,7 @@ public class battleManager : MonoBehaviour
                 newPiece.init();
             }
         }
+        resetTargets();
     }
 
     void Update()
@@ -59,7 +61,8 @@ public class battleManager : MonoBehaviour
         if (Input.GetMouseButtonDown(0) && !justClicked)
         {
             selectedPiece = null;
-            resetTiles(true);
+            resetTiles();
+            resetHighlighting();
         }
         else
         {
@@ -78,18 +81,28 @@ public class battleManager : MonoBehaviour
         }
     }
 
-    //reset distance measures, availability, and highlighting for all tiles
-    public void resetTiles(bool showHighlights)
+    //reset distance measures for all tiles
+    public void resetTiles()
     {
         for (int i = 0; i < allTiles.Length; i++)
         {
-            tile temp = allTiles[i];
-            temp.targeted = new int[2];
-            temp.distance = 1000;
-            if (showHighlights)
-            {
-                temp.gameObject.GetComponent<SpriteRenderer>().color = temp.defaultColor;
-            }
+            allTiles[i].distance = 1000;
+        }
+    }
+
+    public void resetTargets()
+    {
+        for(int i = 0;i<allPieces.Count;i++)
+        {
+            allPieces[i].findAllCandidates();
+        }
+    }
+
+    public void resetHighlighting ()
+    {
+        for (int i = 0; i<allTiles.Length; i++)
+        {
+            allTiles[i].gameObject.GetComponent<SpriteRenderer>().color = allTiles[i].defaultColor;
         }
     }
 

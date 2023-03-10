@@ -13,7 +13,7 @@ public class tile : MonoBehaviour
 
     public tile[] neighbors;
     public int distance;
-    public int[] targeted;//stores weakest piece targeting tile for player in [0] and enemy in [1], gets reset during turn planning
+    public List<piece> targetedBy;//stores all pieces targeting tile
 
     public float scale;
 
@@ -27,7 +27,6 @@ public class tile : MonoBehaviour
 
         scale = tileScale;
         neighbors = new tile[6];
-        targeted = new int[2];
         transform.localScale = new Vector3(scale, scale, 1);
         defaultColor = new Color(0.8f, 0.8f, 0.8f);
         candidateColor = new Color(0.8f, 0.8f, 0.6f);
@@ -35,7 +34,7 @@ public class tile : MonoBehaviour
         this.GetComponent<SpriteRenderer>().color = defaultColor;
         transform.Rotate(new Vector3(0, 0, 30));
         distance = 1000;
-        targeted = new int[2];
+        targetedBy = new List<piece>();
 
         obstacle = 0;//for now
 
@@ -51,24 +50,22 @@ public class tile : MonoBehaviour
     {
         if (Input.GetMouseButtonDown(0))
         {
-            if (bm.selectedPiece != null && !bm.selectedPiece.exhausted && targeted[0] == bm.selectedPiece.value && bm.selectedPiece.team == 0 && bm.playersTurn)
+            if (bm.selectedPiece != null && !bm.selectedPiece.exhausted && targetedBy.Contains(bm.selectedPiece) && bm.selectedPiece.team == 0 && bm.playersTurn &&
+                bm.selectedPiece.isValidCandidate(this))
             {
                 if (thisPiece != null)
                 {
                     bm.selectedPiece.capturing = thisPiece;
                 }
-                thisPiece = bm.selectedPiece;
-                thisPiece.exhausted = true;
-                thisPiece.newTile = this;
-                thisPiece.thisTile.thisPiece = null;
-                thisPiece.thisTile = this;
-                bm.resetTiles(true);
+                bm.selectedPiece.moveToTile(this);
+                bm.resetTiles();
+                bm.resetHighlighting();
             }
             if (thisPiece != null)
             {
                 bm.selectedPiece = thisPiece;
                 bm.justClicked = true;
-                thisPiece.findAllCandidates(true);
+                thisPiece.highlightCandidates();
                 if (!thisPiece.exhausted && thisPiece.team == 0 && bm.playersTurn)
                 {
                     bm.holdingPiece = true;
@@ -78,20 +75,31 @@ public class tile : MonoBehaviour
 
         if (Input.GetMouseButtonUp(0))
         {
-            if (bm.selectedPiece != null && bm.holdingPiece && !bm.selectedPiece.exhausted && targeted[0] == bm.selectedPiece.value)
+            if (bm.selectedPiece != null && bm.holdingPiece && !bm.selectedPiece.exhausted && targetedBy.Contains(bm.selectedPiece) &&
+                bm.selectedPiece.isValidCandidate(this))
             {
                 if (thisPiece != null)
                 {
                     thisPiece.getCaptured();
                 }
                 bm.holdingPiece = false;
-                thisPiece = bm.selectedPiece;
-                thisPiece.transform.position = transform.position;
-                thisPiece.exhausted = true;
-                thisPiece.setColor();
-                thisPiece.thisTile.thisPiece = null;
-                thisPiece.thisTile = this;
-                thisPiece.findAllCandidates(true);//resets highlighting and selects piece again
+                bm.selectedPiece.moveToTile(this);
+                bm.selectedPiece.arriveOnTile();
+                thisPiece.highlightCandidates();
+            }
+        }
+    }
+
+    //updates targeting for each piece in targetedBy list
+    public void updateTargeting()
+    {
+        piece[] oldPieces = new piece[targetedBy.Count];
+        targetedBy.CopyTo(oldPieces);//copy list so it won't change while we are trying to loop through it
+        for (int i = 0;i<oldPieces.Length;i++)
+        {
+            if (oldPieces[i].moveType != piece.JUMP && oldPieces[i].moveRange > 1)//jump or single move targeting is unaffected
+            {
+                oldPieces[i].updateTargeting();
             }
         }
     }

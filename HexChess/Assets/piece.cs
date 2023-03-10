@@ -28,7 +28,7 @@ public class piece : MonoBehaviour
     public float moveRate;
     public bool exhausted;
     public piece capturing;
-    public List<tile> candidates;
+    public List<tile> targets;
 
     public void init()
     {
@@ -44,14 +44,17 @@ public class piece : MonoBehaviour
         value = 1;
         exhausted = false;
         alive = true;
+        bm.allPieces.Add(this);
         specificInit();
+
+        findAllCandidates();
     }
 
     void Update()
     {
         if (newTile != null)
         {
-            moveToNewTile();
+            moveTowardsNewTile();
         }
     }
 
@@ -65,19 +68,41 @@ public class piece : MonoBehaviour
         //do nothing by default
     }
 
-    public void moveToNewTile()
+    //begins moving to new tile, updates location and targeting info
+    public void moveToTile(tile targetTile)
+    {
+        tile oldTile = thisTile;
+        exhausted = true;
+        oldTile.thisPiece = null;
+        newTile = targetTile;
+        thisTile = targetTile;
+        thisTile.thisPiece = this;
+        updateTargeting();
+        oldTile.updateTargeting();
+        thisTile.updateTargeting();
+    }
+
+    //take care of delayed effects of move like coloring, capturing, and sound effects
+    public void arriveOnTile()
+    {
+        transform.position = newTile.transform.position;
+        newTile = null;
+        setColor();
+        if (capturing != null)
+        {
+            capturing.getCaptured();
+            capturing = null;
+        }
+        bm.resetHighlighting();
+        highlightCandidates();
+    }
+
+    public void moveTowardsNewTile()
     {
         Vector3 toNextTile = newTile.transform.position - transform.position;
         if (moveRate * Time.deltaTime > toNextTile.magnitude)//here, we've arrived
         {
-            transform.position = newTile.transform.position;
-            newTile = null;
-            setColor();
-            if (capturing != null)
-            {
-                capturing.getCaptured();
-                capturing = null;
-            }
+            arriveOnTile();
         }
         else
         {
@@ -85,9 +110,33 @@ public class piece : MonoBehaviour
         }
     }
 
+    public bool isValidCandidate(tile target)
+    {
+        return ((target.thisPiece == null || target.thisPiece.team != team) &&
+                target.obstacle == 0 &&
+                exhausted == false);
+    }
+
+    //updates target list and targetedBy list for each affected tile
+    public void updateTargeting()
+    {
+        while(targets.Count > 0)
+        {
+            targets[0].targetedBy.Remove(this);
+            targets.RemoveAt(0);
+        }
+        findAllCandidates();
+    }
+
     public void getCaptured()
     {
         alive = false;
+        while (targets.Count > 0)
+        {
+            targets[0].targetedBy.Remove(this);
+            targets.RemoveAt(0);
+        }
+        bm.allPieces.Remove(this);
         Destroy(gameObject);
     }
 
@@ -111,36 +160,41 @@ public class piece : MonoBehaviour
         }
     }
 
-    public void findAllCandidates(bool showHighlights)
+    public void highlightCandidates()
     {
-        bm.resetTiles(showHighlights);
-        if (showHighlights)
+        bm.resetHighlighting();
+        thisTile.gameObject.GetComponent<SpriteRenderer>().color = thisTile.selectedColor;
+        for (int i = 0;i< targets.Count;i++)
         {
-            thisTile.gameObject.GetComponent<SpriteRenderer>().color = thisTile.selectedColor;
-        }
-        candidates = new List<tile>();
-        if (exhausted)
-        {
-            return;
-        }
-        if (moveType == STEP)
-        {
-            planPathsWithObtacles(showHighlights); 
-        }
-        else if (moveType == JUMP)
-        {
-            planPathsWithoutObtacles(showHighlights);
-        }
-        else if (moveType == LINE)
-        {
-            planPathsInALine(showHighlights);
+            if (isValidCandidate(targets[i]))
+            {
+                targets[i].gameObject.GetComponent<SpriteRenderer>().color = targets[i].candidateColor;
+            }
         }
     }
 
+    public void findAllCandidates()
+    {
+        bm.resetTiles();
+        targets = new List<tile>();
+        if (moveType == STEP)
+        {
+            planPathsWithObtacles(); 
+        }
+        else if (moveType == JUMP)
+        {
+            planPathsWithoutObtacles();
+        }
+        else if (moveType == LINE)
+        {
+            planPathsInALine();
+        }
+    }
+    
 
 
     //breadth first search of tiles not recursing on unavailable tiles
-    public void planPathsWithObtacles(bool showHighlights)
+    public void planPathsWithObtacles()
     {
         Queue q = new Queue();
         q.Enqueue(thisTile);
@@ -157,20 +211,14 @@ public class piece : MonoBehaviour
                     otherTile = activeTile.neighbors[i];
                     if (activeTile.distance < moveRange && 
                         otherTile.distance > activeTile.distance + 1 && 
-                        (otherTile.thisPiece == null || otherTile.thisPiece.team != team) &&
-                        otherTile.obstacle == 0 &&
                         (activeTile == thisTile || activeTile.thisPiece == null))
                     {
                         q.Enqueue(otherTile);
                         otherTile.distance = activeTile.distance + 1;
-                        if (otherTile.distance <= moveRange) // here, otherTile is a candidate we can move to
+                        if (otherTile.distance <= moveRange && !targets.Contains(otherTile)) // here, otherTile is a target we can maybe move to
                         {
-                            otherTile.targeted[0] = value;
-                            candidates.Add(otherTile);
-                            if (showHighlights)
-                            {
-                                otherTile.gameObject.GetComponent<SpriteRenderer>().color = otherTile.candidateColor;
-                            }
+                            otherTile.targetedBy.Add(this);
+                            targets.Add(otherTile);
                         }
                     }
                 }
@@ -179,7 +227,7 @@ public class piece : MonoBehaviour
     }
 
     //breadth first search of tiles that will recurse on unavailable tiles
-    public void planPathsWithoutObtacles(bool showHighlights)
+    public void planPathsWithoutObtacles()
     {
         Queue q = new Queue();
         q.Enqueue(thisTile);
@@ -198,16 +246,10 @@ public class piece : MonoBehaviour
                     {
                         q.Enqueue(otherTile);
                         otherTile.distance = activeTile.distance + 1;
-                        if (otherTile.distance == moveRange &&
-                             (otherTile.thisPiece == null || otherTile.thisPiece.team != team) &&
-                             otherTile.obstacle == 0) // here, otherTile is a candidate we can move to
+                        if (otherTile.distance == moveRange && !targets.Contains(otherTile)) // here, otherTile is a target we can maybe move to
                         {
-                            otherTile.targeted[0] = value;
-                            candidates.Add(otherTile);
-                            if (showHighlights)
-                            {
-                                otherTile.gameObject.GetComponent<SpriteRenderer>().color = otherTile.candidateColor;
-                            }
+                            otherTile.targetedBy.Add(this);
+                            targets.Add(otherTile);
                         }
                     }
                 }
@@ -216,7 +258,7 @@ public class piece : MonoBehaviour
     }
 
     //depth first search of tiles that will only recurse in one direction at a time, blocked by unavailable tiles
-    public void planPathsInALine(bool showHighlights)
+    public void planPathsInALine()
     {
         thisTile.distance = 0;
         tile activeTile;
@@ -233,20 +275,14 @@ public class piece : MonoBehaviour
                     otherTile = activeTile.neighbors[i];
                     if (activeTile.distance < moveRange &&
                         otherTile.distance > activeTile.distance + 1 &&
-                        (otherTile.thisPiece == null || otherTile.thisPiece.team != team) &&
-                        otherTile.obstacle == 0 &&
                         (activeTile == thisTile || activeTile.thisPiece == null))
                     {
                         continueSearch = true;
                         otherTile.distance = activeTile.distance + 1;
-                        if (otherTile.distance <= moveRange) // here, otherTile is a candidate we can move to
+                        if (otherTile.distance <= moveRange && !targets.Contains(otherTile)) // here, otherTile is a targert we can maybe move to
                         {
-                            otherTile.targeted[0] = value;
-                            candidates.Add(otherTile);
-                            if (showHighlights)
-                            {
-                                otherTile.gameObject.GetComponent<SpriteRenderer>().color = otherTile.candidateColor;
-                            }
+                            otherTile.targetedBy.Add(this);
+                            targets.Add(otherTile);
                         }
                         activeTile = otherTile;
                     }
