@@ -47,7 +47,7 @@ public class battleManager : MonoBehaviour
                 newPiece.init();
             }
         }
-        resetTargets();
+        resetTargets(true);
     }
 
     void Update()
@@ -90,11 +90,11 @@ public class battleManager : MonoBehaviour
         }
     }
 
-    public void resetTargets()
+    public void resetTargets(bool real)
     {
         for(int i = 0;i<allPieces.Count;i++)
         {
-            allPieces[i].findAllCandidates();
+            allPieces[i].updateTargeting(real);
         }
     }
 

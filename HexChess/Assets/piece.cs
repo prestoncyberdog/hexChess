@@ -24,11 +24,15 @@ public class piece : MonoBehaviour
     public tile intention;//used by AI
 
     public tile thisTile;
+    public bool exhausted;
+    public List<tile> targets;
+    public tile hypoTile;
+    public bool hypoExhausted;
+    public List<tile> hypoTargets;
+
     public tile newTile;
     public float moveRate;
-    public bool exhausted;
     public piece capturing;
-    public List<tile> targets;
 
     public void init()
     {
@@ -47,7 +51,7 @@ public class piece : MonoBehaviour
         bm.allPieces.Add(this);
         specificInit();
 
-        findAllCandidates();
+        updateTargeting(true);
     }
 
     void Update()
@@ -69,17 +73,27 @@ public class piece : MonoBehaviour
     }
 
     //begins moving to new tile, updates location and targeting info
-    public void moveToTile(tile targetTile)
+    public void moveToTile(tile targetTile, bool real)
     {
         tile oldTile = thisTile;
-        exhausted = true;
-        oldTile.thisPiece = null;
-        newTile = targetTile;
-        thisTile = targetTile;
-        thisTile.thisPiece = this;
-        updateTargeting();
-        oldTile.updateTargeting();
-        thisTile.updateTargeting();
+        if (real)
+        {
+            exhausted = true;
+            oldTile.thisPiece = null;
+            newTile = targetTile;
+            thisTile = targetTile;
+            thisTile.thisPiece = this;
+        }
+        else //here its a move on the hypo board
+        {
+            hypoExhausted = true;
+            oldTile.hypoPiece = null;
+            hypoTile = targetTile;
+            hypoTile.hypoPiece = this;
+        }
+        updateTargeting(real);
+        oldTile.updateTargeting(real);
+        targetTile.updateTargeting(real);
     }
 
     //take care of delayed effects of move like coloring, capturing, and sound effects
@@ -118,14 +132,25 @@ public class piece : MonoBehaviour
     }
 
     //updates target list and targetedBy list for each affected tile
-    public void updateTargeting()
+    public void updateTargeting(bool real)
     {
-        while(targets.Count > 0)
+        if (real)
         {
-            targets[0].targetedBy.Remove(this);
-            targets.RemoveAt(0);
+            while (targets.Count > 0)
+            {
+                targets[0].targetedBy.Remove(this);
+                targets.RemoveAt(0);
+            }
         }
-        findAllCandidates();
+        else
+        {
+            while (hypoTargets.Count > 0)
+            {
+                hypoTargets[0].hypoTargetedBy.Remove(this);
+                hypoTargets.RemoveAt(0);
+            }
+        }
+        findAllCandidates(real);
     }
 
     public void getCaptured()
@@ -173,34 +198,46 @@ public class piece : MonoBehaviour
         }
     }
 
-    public void findAllCandidates()
+    private void findAllCandidates(bool real)
     {
         bm.resetTiles();
-        targets = new List<tile>();
+        if (real)
+        {
+            targets = new List<tile>();
+        }
+        else
+        {
+            hypoTargets = new List<tile>();
+        }
+
         if (moveType == STEP)
         {
-            planPathsWithObtacles(); 
+            planPathsWithObtacles(real); 
         }
         else if (moveType == JUMP)
         {
-            planPathsWithoutObtacles();
+            planPathsWithoutObtacles(real);
         }
         else if (moveType == LINE)
         {
-            planPathsInALine();
+            planPathsInALine(real);
         }
     }
-    
+
 
 
     //breadth first search of tiles not recursing on unavailable tiles
-    public void planPathsWithObtacles()
+    private void planPathsWithObtacles(bool real)
     {
         Queue q = new Queue();
-        q.Enqueue(thisTile);
-        thisTile.distance = 0;
-        tile activeTile;
+        tile activeTile = hypoTile;
         tile otherTile;
+        if (real)
+        {
+            activeTile = thisTile;
+        }
+        q.Enqueue(activeTile);
+        activeTile.distance = 0;
         while (q.Count > 0)
         {
             activeTile = (tile)q.Dequeue();
@@ -211,14 +248,24 @@ public class piece : MonoBehaviour
                     otherTile = activeTile.neighbors[i];
                     if (activeTile.distance < moveRange && 
                         otherTile.distance > activeTile.distance + 1 && 
-                        (activeTile == thisTile || activeTile.thisPiece == null))
+                            ((real && (activeTile == thisTile || activeTile.thisPiece == null)) ||
+                            (!real && (activeTile == hypoTile || activeTile.hypoPiece == null))))
                     {
                         q.Enqueue(otherTile);
                         otherTile.distance = activeTile.distance + 1;
-                        if (otherTile.distance <= moveRange && !targets.Contains(otherTile)) // here, otherTile is a target we can maybe move to
+                        if (otherTile.distance <= moveRange && ((real && !targets.Contains(otherTile)) ||
+                                                                (!real && !hypoTargets.Contains(otherTile)))) // here, otherTile is a target we can maybe move to
                         {
-                            otherTile.targetedBy.Add(this);
-                            targets.Add(otherTile);
+                            if (real)
+                            {
+                                otherTile.targetedBy.Add(this);
+                                targets.Add(otherTile);
+                            }
+                            else
+                            {
+                                otherTile.hypoTargetedBy.Add(this);
+                                hypoTargets.Add(otherTile);
+                            }
                         }
                     }
                 }
@@ -227,13 +274,17 @@ public class piece : MonoBehaviour
     }
 
     //breadth first search of tiles that will recurse on unavailable tiles
-    public void planPathsWithoutObtacles()
+    private void planPathsWithoutObtacles(bool real)
     {
         Queue q = new Queue();
-        q.Enqueue(thisTile);
-        thisTile.distance = 0;
-        tile activeTile;
+        tile activeTile = hypoTile;
         tile otherTile;
+        if (real)
+        {
+            activeTile = thisTile;
+        }
+        q.Enqueue(activeTile);
+        activeTile.distance = 0;
         while (q.Count > 0)
         {
             activeTile = (tile)q.Dequeue();
@@ -246,10 +297,19 @@ public class piece : MonoBehaviour
                     {
                         q.Enqueue(otherTile);
                         otherTile.distance = activeTile.distance + 1;
-                        if (otherTile.distance == moveRange && !targets.Contains(otherTile)) // here, otherTile is a target we can maybe move to
+                        if (otherTile.distance == moveRange && ((real && !targets.Contains(otherTile)) ||
+                                                                (!real && !hypoTargets.Contains(otherTile)))) // here, otherTile is a target we can maybe move to
                         {
-                            otherTile.targetedBy.Add(this);
-                            targets.Add(otherTile);
+                            if (real)
+                            {
+                                otherTile.targetedBy.Add(this);
+                                targets.Add(otherTile);
+                            }
+                            else
+                            {
+                                otherTile.hypoTargetedBy.Add(this);
+                                hypoTargets.Add(otherTile);
+                            }
                         }
                     }
                 }
@@ -258,15 +318,20 @@ public class piece : MonoBehaviour
     }
 
     //depth first search of tiles that will only recurse in one direction at a time, blocked by unavailable tiles
-    public void planPathsInALine()
+    private void planPathsInALine(bool real)
     {
-        thisTile.distance = 0;
+        tile startingTile = hypoTile;
+        if (real)
+        {
+            startingTile = thisTile;
+        }
+        startingTile.distance = 0;
         tile activeTile;
         tile otherTile;
         bool continueSearch = true;
-        for (int i = 0; i < thisTile.neighbors.Length; i++)
+        for (int i = 0; i < startingTile.neighbors.Length; i++)
         {
-            activeTile = thisTile;
+            activeTile = startingTile;
             while (continueSearch)
             {
                 continueSearch = false;
@@ -275,14 +340,24 @@ public class piece : MonoBehaviour
                     otherTile = activeTile.neighbors[i];
                     if (activeTile.distance < moveRange &&
                         otherTile.distance > activeTile.distance + 1 &&
-                        (activeTile == thisTile || activeTile.thisPiece == null))
+                            ((real && (activeTile == thisTile || activeTile.thisPiece == null)) ||
+                            (!real && (activeTile == hypoTile || activeTile.hypoPiece == null))))
                     {
                         continueSearch = true;
                         otherTile.distance = activeTile.distance + 1;
-                        if (otherTile.distance <= moveRange && !targets.Contains(otherTile)) // here, otherTile is a targert we can maybe move to
+                        if (otherTile.distance <= moveRange && ((real && !targets.Contains(otherTile)) ||
+                                                                (!real && !hypoTargets.Contains(otherTile)))) // here, otherTile is a target we can maybe move to
                         {
-                            otherTile.targetedBy.Add(this);
-                            targets.Add(otherTile);
+                            if (real)
+                            {
+                                otherTile.targetedBy.Add(this);
+                                targets.Add(otherTile);
+                            }
+                            else
+                            {
+                                otherTile.hypoTargetedBy.Add(this);
+                                hypoTargets.Add(otherTile);
+                            }
                         }
                         activeTile = otherTile;
                     }

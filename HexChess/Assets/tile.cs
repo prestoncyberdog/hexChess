@@ -12,13 +12,15 @@ public class tile : MonoBehaviour
     public Color selectedColor;
 
     public tile[] neighbors;
-    public int distance;
-    public List<piece> targetedBy;//stores all pieces targeting tile
-
     public float scale;
+    public int distance;
 
+    public List<piece> targetedBy;//stores all pieces targeting tile
     public piece thisPiece;
     public int obstacle;//may be object instead later
+    public List<piece> hypoTargetedBy;
+    public piece hypoPiece;
+
 
     public void init(float tileScale)
     {
@@ -57,7 +59,7 @@ public class tile : MonoBehaviour
                 {
                     bm.selectedPiece.capturing = thisPiece;
                 }
-                bm.selectedPiece.moveToTile(this);
+                bm.selectedPiece.moveToTile(this, true);
                 bm.resetTiles();
                 bm.resetHighlighting();
             }
@@ -83,7 +85,7 @@ public class tile : MonoBehaviour
                     thisPiece.getCaptured();
                 }
                 bm.holdingPiece = false;
-                bm.selectedPiece.moveToTile(this);
+                bm.selectedPiece.moveToTile(this, true);
                 bm.selectedPiece.arriveOnTile();
                 thisPiece.highlightCandidates();
             }
@@ -91,15 +93,25 @@ public class tile : MonoBehaviour
     }
 
     //updates targeting for each piece in targetedBy list
-    public void updateTargeting()
+    public void updateTargeting(bool real)
     {
-        piece[] oldPieces = new piece[targetedBy.Count];
-        targetedBy.CopyTo(oldPieces);//copy list so it won't change while we are trying to loop through it
+        piece[] oldPieces; 
+        if (real)
+        {
+            oldPieces = new piece[targetedBy.Count];
+            targetedBy.CopyTo(oldPieces);//copy list so it won't change while we are trying to loop through it
+        }
+        else
+        {
+            oldPieces = new piece[hypoTargetedBy.Count];
+            hypoTargetedBy.CopyTo(oldPieces);
+        }
+
         for (int i = 0;i<oldPieces.Length;i++)
         {
             if (oldPieces[i].moveType != piece.JUMP && oldPieces[i].moveRange > 1)//jump or single move targeting is unaffected
             {
-                oldPieces[i].updateTargeting();
+                oldPieces[i].updateTargeting(real);
             }
         }
     }

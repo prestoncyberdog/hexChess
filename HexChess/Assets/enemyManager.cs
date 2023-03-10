@@ -107,7 +107,7 @@ public class enemyManager : MonoBehaviour
             movePiece(moveOrder[moveIndex]);
             return;
         }
-        currentPiece.moveToTile(currentPiece.intention);
+        currentPiece.moveToTile(currentPiece.intention, true);
     }
 
     public void findAllPieces()
