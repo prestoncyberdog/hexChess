@@ -104,6 +104,10 @@ public class battleManager : MonoBehaviour
         {
             allTiles[i].gameObject.GetComponent<SpriteRenderer>().color = allTiles[i].defaultColor;
         }
+        if (selectedPiece != null)
+        {
+            selectedPiece.highlightCandidates();
+        }
     }
 
     public tile findNearestTileToMouse()

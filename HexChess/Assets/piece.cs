@@ -20,14 +20,15 @@ public class piece : MonoBehaviour
     public int moveRange;
     public int value;
     public int team;
-    public bool alive;
     public tile intention;//used by AI
 
     public tile thisTile;
     public bool exhausted;
+    public bool alive;
     public List<tile> targets;
     public tile hypoTile;
     public bool hypoExhausted;
+    public bool hypoAlive;
     public List<tile> hypoTargets;
 
     public tile newTile;
@@ -38,12 +39,11 @@ public class piece : MonoBehaviour
     {
         gm = GameObject.FindGameObjectWithTag("gameManager").GetComponent<gameManager>();
         bm = gm.bm;
-        moveRate = 5f;
+        moveRate = 2f * (2 - team);
         playerColor = new Color(0.2f, 0.2f, 1f);
         exhaustedPlayerColor = new Color(0.4f, 0.4f, 1f);
         enemyColor = new Color(1f, 0.2f, 0.2f);
         exhaustedEnemyColor = new Color(1f, 0.4f, 0.4f);
-        setColor();
 
         value = 1;
         exhausted = false;
@@ -52,6 +52,7 @@ public class piece : MonoBehaviour
         specificInit();
 
         updateTargeting(true);
+        setColor();
     }
 
     void Update()
@@ -72,12 +73,35 @@ public class piece : MonoBehaviour
         //do nothing by default
     }
 
+    //does not include exhausting new pieces
+    public void placePiece(tile targetTile, bool real)
+    {
+        if (real)
+        {
+            newTile = targetTile;
+            thisTile = targetTile;
+            thisTile.thisPiece = this;
+        }
+        else //here its a move on the hypo board
+        {
+            hypoTile = targetTile;
+            hypoTile.hypoPiece = this;
+        }
+        updateTargeting(real);
+        targetTile.updateTargeting(real);
+    }
+
     //begins moving to new tile, updates location and targeting info
     public void moveToTile(tile targetTile, bool real)
     {
-        tile oldTile = thisTile;
+        tile oldTile;
         if (real)
         {
+            if (targetTile.thisPiece != null)
+            {
+                capturing = targetTile.thisPiece;
+            }
+            oldTile = thisTile;
             exhausted = true;
             oldTile.thisPiece = null;
             newTile = targetTile;
@@ -86,6 +110,11 @@ public class piece : MonoBehaviour
         }
         else //here its a move on the hypo board
         {
+            if (targetTile.hypoPiece != null)
+            {
+                capturing = targetTile.hypoPiece;
+            }
+            oldTile = hypoTile;
             hypoExhausted = true;
             oldTile.hypoPiece = null;
             hypoTile = targetTile;
@@ -108,7 +137,6 @@ public class piece : MonoBehaviour
             capturing = null;
         }
         bm.resetHighlighting();
-        highlightCandidates();
     }
 
     public void moveTowardsNewTile()
@@ -124,11 +152,20 @@ public class piece : MonoBehaviour
         }
     }
 
-    public bool isValidCandidate(tile target)
+    public bool isValidCandidate(tile target, bool real)
     {
-        return ((target.thisPiece == null || target.thisPiece.team != team) &&
-                target.obstacle == 0 &&
-                exhausted == false);
+        if (real)
+        {
+            return ((target.thisPiece == null || target.thisPiece.team != team) &&
+                    target.obstacle == 0 &&
+                    exhausted == false);
+        }
+        else
+        {
+            return ((target.hypoPiece == null || target.hypoPiece.team != team) &&
+                    target.hypoObstacle == 0 &&
+                    hypoExhausted == false);
+        }
     }
 
     //updates target list and targetedBy list for each affected tile
@@ -162,6 +199,14 @@ public class piece : MonoBehaviour
             targets.RemoveAt(0);
         }
         bm.allPieces.Remove(this);
+        if (team == 0)
+        {
+            bm.em.playerPieces.Remove(this);
+        }
+        if (team == 1)
+        {
+            bm.em.enemyPieces.Remove(this);
+        }
         Destroy(gameObject);
     }
 
@@ -187,11 +232,10 @@ public class piece : MonoBehaviour
 
     public void highlightCandidates()
     {
-        bm.resetHighlighting();
         thisTile.gameObject.GetComponent<SpriteRenderer>().color = thisTile.selectedColor;
         for (int i = 0;i< targets.Count;i++)
         {
-            if (isValidCandidate(targets[i]))
+            if (isValidCandidate(targets[i], true))
             {
                 targets[i].gameObject.GetComponent<SpriteRenderer>().color = targets[i].candidateColor;
             }

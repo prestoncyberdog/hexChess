@@ -20,6 +20,7 @@ public class tile : MonoBehaviour
     public int obstacle;//may be object instead later
     public List<piece> hypoTargetedBy;
     public piece hypoPiece;
+    public int hypoObstacle;
 
 
     public void init(float tileScale)
@@ -37,6 +38,7 @@ public class tile : MonoBehaviour
         transform.Rotate(new Vector3(0, 0, 30));
         distance = 1000;
         targetedBy = new List<piece>();
+        hypoTargetedBy = new List<piece>();
 
         obstacle = 0;//for now
 
@@ -53,12 +55,8 @@ public class tile : MonoBehaviour
         if (Input.GetMouseButtonDown(0))
         {
             if (bm.selectedPiece != null && !bm.selectedPiece.exhausted && targetedBy.Contains(bm.selectedPiece) && bm.selectedPiece.team == 0 && bm.playersTurn &&
-                bm.selectedPiece.isValidCandidate(this))
+                bm.selectedPiece.isValidCandidate(this, true))
             {
-                if (thisPiece != null)
-                {
-                    bm.selectedPiece.capturing = thisPiece;
-                }
                 bm.selectedPiece.moveToTile(this, true);
                 bm.resetTiles();
                 bm.resetHighlighting();
@@ -67,7 +65,7 @@ public class tile : MonoBehaviour
             {
                 bm.selectedPiece = thisPiece;
                 bm.justClicked = true;
-                thisPiece.highlightCandidates();
+                bm.resetHighlighting();
                 if (!thisPiece.exhausted && thisPiece.team == 0 && bm.playersTurn)
                 {
                     bm.holdingPiece = true;
@@ -78,7 +76,7 @@ public class tile : MonoBehaviour
         if (Input.GetMouseButtonUp(0))
         {
             if (bm.selectedPiece != null && bm.holdingPiece && !bm.selectedPiece.exhausted && targetedBy.Contains(bm.selectedPiece) &&
-                bm.selectedPiece.isValidCandidate(this))
+                bm.selectedPiece.isValidCandidate(this, true))
             {
                 if (thisPiece != null)
                 {
@@ -87,7 +85,7 @@ public class tile : MonoBehaviour
                 bm.holdingPiece = false;
                 bm.selectedPiece.moveToTile(this, true);
                 bm.selectedPiece.arriveOnTile();
-                thisPiece.highlightCandidates();
+                bm.resetHighlighting();
             }
         }
     }

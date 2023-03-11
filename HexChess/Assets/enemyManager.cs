@@ -7,15 +7,20 @@ public class enemyManager : MonoBehaviour
     public gameManager gm;
     public battleManager bm;
 
-    public List<piece> playersPieces;
+    public List<piece> playerPieces;
     public List<piece> enemyPieces;
     public List<piece> moveOrder;
+    public List<piece> decideOrder;
     public int moveIndex;
+
+    public int groupSize;//the number of units that can be considered together
 
     public void init()
     {
         gm = GameObject.FindGameObjectWithTag("gameManager").GetComponent<gameManager>();
         bm = gm.bm;
+
+        groupSize = 2;
 
         moveOrder = new List<piece>();
         moveIndex = 0;
@@ -61,7 +66,7 @@ public class enemyManager : MonoBehaviour
     {
         findAllPieces();
         unexhaustPieces();
-
+        copyHypoBoard();
         decideActions();
         //begin moving pieces
         if (moveOrder.Count == 0)
@@ -77,12 +82,138 @@ public class enemyManager : MonoBehaviour
     //each piece must recieve an intention tile and the pieces will be ordered in moveOrder
     public void decideActions()
     {
+        orderPieces();
         moveOrder = new List<piece>();
+        moveIndex = 0;
+        while (decideOrder.Count > 0)
+        {
+            decideActionRecur(true);
+        }
+    }
+
+    //chooses and adds 1 action to the moveOrder list, removes relevant piece from decideOrder
+    public float decideActionRecur(bool makeDecision)
+    {
+        float bestVal = -1;
+        float newVal;
+        piece bestPiece = decideOrder[0];
+        tile bestTile = bestPiece.hypoTile;
+        piece capturedPiece = null;
+        tile previousTile = null;
+        tile[] hypoTargetCopy;
+
+        for (int i = 0; i < decideOrder.Count && i < groupSize; i++)//todo: let pieces choose to not move
+        {
+            if (!decideOrder[i].hypoExhausted)
+            {
+                //first, consider not moving
+                decideOrder[i].hypoExhausted = true;
+                newVal = decideActionRecur(false);//recurse, but don't allow recursions to make decisions
+                if (newVal > bestVal)
+                {
+                    bestVal = newVal;
+                    bestPiece = decideOrder[i];
+                    bestTile = decideOrder[i].hypoTile;
+                }
+                decideOrder[i].hypoExhausted = false;
+                //now, consider all possible moves
+                hypoTargetCopy = new tile[decideOrder[i].hypoTargets.Count];
+                decideOrder[i].hypoTargets.CopyTo(hypoTargetCopy);//use copy of this list so it won't change as we loop through it
+                for (int j = 0; j < hypoTargetCopy.Length; j++)
+                {
+                    if (decideOrder[i].isValidCandidate(hypoTargetCopy[j], false))
+                    {
+                        //make hypo move
+                        previousTile = decideOrder[i].hypoTile;
+                        if (hypoTargetCopy[j].hypoPiece != null)
+                        {
+                            capturedPiece = hypoTargetCopy[j].hypoPiece;
+                            capturedPiece.hypoAlive = false;
+                        }
+                        decideOrder[i].moveToTile(hypoTargetCopy[j], false);
+
+                        //evaluate result of move
+                        newVal = decideActionRecur(false);//recurse, but don't allow recursions to make decisions
+                        if (newVal > bestVal)
+                        {
+                            bestVal = newVal;
+                            bestPiece = decideOrder[i];
+                            bestTile = hypoTargetCopy[j];
+                        }
+
+                        //undo hypo move
+                        decideOrder[i].moveToTile(previousTile, false);
+                        decideOrder[i].hypoExhausted = false;
+                        decideOrder[i].capturing = null;
+                        if (capturedPiece != null)
+                        {
+                            capturedPiece.placePiece(hypoTargetCopy[j], false);
+                            capturedPiece.hypoAlive = true;
+                        }
+                        capturedPiece = null;
+                    }
+                }
+            }
+        }
+
+        if (makeDecision)//only the top level of the recursion can make actual move plans
+        {
+
+            //update hypo board to include new move
+            if (bestTile.hypoPiece != null)
+            {
+                bestTile.hypoPiece.hypoAlive = false;
+            }
+            bestPiece.moveToTile(bestTile, false);
+
+            moveOrder.Add(bestPiece);
+            bestPiece.intention = bestTile;
+            decideOrder.Remove(bestPiece);
+        }
+
+        if (bestVal == -1)//we did not manage to recurse on any other pieces
+        {
+            bestVal = evaluatePosition();
+        }
+        return bestVal;
+    }
+
+    //evaluates the hypothetical position
+    //should also consider end of game?
+    public float evaluatePosition()
+    {
+        return Random.Range(0, 1000);
+    }
+
+    //determines the order in which the ai will consider its pieces
+    public void orderPieces()
+    {
+        //for now, whatever order enemyPieces is in is fine
+        decideOrder = new List<piece>();
         for (int i = 0;i<enemyPieces.Count;i++)
         {
-            moveOrder.Add(enemyPieces[i]);
-            //enemyPieces[i].findAllCandidates();
-            enemyPieces[i].intention = enemyPieces[i].thisTile;
+            decideOrder.Add(enemyPieces[i]);
+        }
+    }
+
+    public void copyHypoBoard()
+    {
+        for (int i = 0;i<bm.allPieces.Count;i++)
+        {
+            bm.allPieces[i].hypoAlive = bm.allPieces[i].alive;
+            bm.allPieces[i].hypoExhausted = false;
+            bm.allPieces[i].hypoTile = bm.allPieces[i].thisTile;
+            //copy targets
+            bm.allPieces[i].hypoTargets = new List<tile>();
+            copyTileList(bm.allPieces[i].targets, bm.allPieces[i].hypoTargets);
+        }
+        for (int i = 0;i<bm.allTiles.Length;i++)
+        {
+            bm.allTiles[i].hypoPiece = bm.allTiles[i].thisPiece;
+            bm.allTiles[i].hypoObstacle = bm.allTiles[i].obstacle;
+            //copy targeted by
+            bm.allTiles[i].hypoTargetedBy = new List<piece>();
+            copyPieceList(bm.allTiles[i].targetedBy, bm.allTiles[i].hypoTargetedBy);
         }
     }
 
@@ -90,7 +221,6 @@ public class enemyManager : MonoBehaviour
     {
         unexhaustPieces();
         bm.playersTurn = true;
-        bm.selectedPiece = null;
         bm.resetHighlighting();
     }
 
@@ -114,7 +244,7 @@ public class enemyManager : MonoBehaviour
     {
         GameObject[] pieceGameObjects = GameObject.FindGameObjectsWithTag("piece");
         piece currentPiece;
-        playersPieces = new List<piece>();
+        playerPieces = new List<piece>();
         enemyPieces = new List<piece>();
         for (int i = 0;i < pieceGameObjects.Length;i++)
         {
@@ -124,7 +254,7 @@ public class enemyManager : MonoBehaviour
                 bm.allPieces.Add(currentPiece);
                 if (currentPiece.team == 0)
                 {
-                    playersPieces.Add(currentPiece);
+                    playerPieces.Add(currentPiece);
                 }
                 else if (currentPiece.team == 1)
                 {
@@ -137,15 +267,31 @@ public class enemyManager : MonoBehaviour
     //unexhaust all pieces 
     public void unexhaustPieces()
     {
-        for (int i = 0;i< playersPieces.Count;i++)
+        for (int i = 0;i< playerPieces.Count;i++)
         {
-            playersPieces[i].exhausted = false;
-            playersPieces[i].setColor();
+            playerPieces[i].exhausted = false;
+            playerPieces[i].setColor();
         }
         for (int i = 0; i < enemyPieces.Count; i++)
         {
             enemyPieces[i].exhausted = false;
             enemyPieces[i].setColor();
+        }
+    }
+
+    public void copyTileList(List<tile> original, List<tile> copy)
+    {
+        for (int i = 0;i<original.Count;i++)
+        {
+            copy.Add(original[i]);
+        }
+    }
+
+    public void copyPieceList(List<piece> original, List<piece> copy)
+    {
+        for (int i = 0; i < original.Count; i++)
+        {
+            copy.Add(original[i]);
         }
     }
 }
