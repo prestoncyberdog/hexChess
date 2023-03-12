@@ -9,11 +9,14 @@ public class enemyManager : MonoBehaviour
 
     public List<piece> playerPieces;
     public List<piece> enemyPieces;
+    public List<piece> spawnPlan;
     public List<piece> moveOrder;
     public List<piece> decideOrder;
     public int moveIndex;
 
     public int groupSize;//the number of units that can be considered together
+    public float spawnDelay;
+    public float spawnDelayMax;
 
     public void init()
     {
@@ -21,23 +24,13 @@ public class enemyManager : MonoBehaviour
         bm = gm.bm;
 
         groupSize = 2;
+        spawnDelayMax = 1;
 
         moveOrder = new List<piece>();
         moveIndex = 0;
 
-        //for now, manually force some pieces onto the board
-        for (int i = 0; i < 10; i++)
-        {
-            tile place = bm.allTiles[Random.Range(0, bm.allTiles.Length)];
-            if (place.thisPiece == null)
-            {
-                piece newPiece = Instantiate(gm.Pieces[0], place.transform.position, Quaternion.identity).GetComponent<piece>();
-                newPiece.thisTile = place;
-                place.thisPiece = newPiece;
-                newPiece.team = 1;
-                newPiece.init();
-            }
-        }
+        spawnPlan = new List<piece>();
+        prepareSpawns();
     }
 
     void Update()
@@ -46,8 +39,9 @@ public class enemyManager : MonoBehaviour
         {
             return;
         }
-        else if (moveOrder[moveIndex].newTile != null)//current piece is still moving
+        else if (moveOrder[moveIndex].newTile != null || spawnDelay > 0)//current piece is still moving
         {
+            spawnDelay -= Time.deltaTime;
             return;
         }
         else
@@ -55,7 +49,7 @@ public class enemyManager : MonoBehaviour
             moveIndex++;
             if (moveIndex >= moveOrder.Count)
             {
-                endTurn();
+                bm.changeTurn(0);
                 return;
             }
             movePiece(moveOrder[moveIndex]);
@@ -65,13 +59,14 @@ public class enemyManager : MonoBehaviour
     public void takeTurn()
     {
         findAllPieces();
-        unexhaustPieces();
+        bm.changeTurn(1);
         copyHypoBoard();
         decideActions();
+        decidePlacements();
         //begin moving pieces
         if (moveOrder.Count == 0)
         {
-            endTurn();
+            bm.changeTurn(0);
         }
         else
         {
@@ -185,6 +180,60 @@ public class enemyManager : MonoBehaviour
         return Random.Range(0, 1000);
     }
 
+    //decide which pieces to place and setting their intentions, using hypo board after other moves are done
+    public void decidePlacements()
+    {
+        bool stillPlacing = true;
+        List<tile> spawnTiles = new List<tile>();
+        for (int i = 0;i<bm.allTiles.Length;i++)
+        {
+            if (bm.allTiles[i].isValidPlacement(1,false))
+            {
+                spawnTiles.Add(bm.allTiles[i]);
+            }
+        }
+        if (spawnTiles.Count == 0)
+        {
+            return;
+        }
+        tile bestTile;
+        float bestVal;
+        float currentVal;
+        while (bm.playsRemaining > 0 && stillPlacing)
+        {
+            piece currentPiece = spawnPlan[0];
+            spawnPlan.Remove(currentPiece);
+            //choose tile
+            bestTile = spawnTiles[0];
+            bestVal = -1;
+            for (int i = 0;i<spawnTiles.Count;i++)
+            {
+                //place piece on hypo board
+                currentPiece.hypoAlive = true;
+                currentPiece.placePiece(spawnTiles[i], false);
+                //evaluate
+                currentVal = evaluatePosition();
+                if (currentVal > bestVal)
+                {
+                    bestVal = currentVal;
+                    bestTile = spawnTiles[i];
+                }
+                //remove piece from hypo board
+                currentPiece.hypoAlive = false;
+                currentPiece.updateTargeting(false);
+                spawnTiles[i].updateTargeting(false);
+            }
+            //place piece on hypo board
+            currentPiece.hypoAlive = true;
+            currentPiece.placePiece(bestTile, false);
+            //plan to place piece in move order
+            moveOrder.Add(currentPiece);
+            currentPiece.intention = bestTile;
+            spawnTiles.Remove(bestTile);
+            bm.playsRemaining--;
+        }
+    }
+
     //determines the order in which the ai will consider its pieces
     public void orderPieces()
     {
@@ -215,13 +264,10 @@ public class enemyManager : MonoBehaviour
             bm.allTiles[i].hypoTargetedBy = new List<piece>();
             copyPieceList(bm.allTiles[i].targetedBy, bm.allTiles[i].hypoTargetedBy);
         }
-    }
-
-    public void endTurn()
-    {
-        unexhaustPieces();
-        bm.playersTurn = true;
-        bm.resetHighlighting();
+        for (int i = 0;i<bm.allObjectives.Length;i++)
+        {
+            bm.allObjectives[i].hypoTeam = bm.allObjectives[i].team;
+        }
     }
 
     public void movePiece(piece currentPiece)
@@ -231,13 +277,21 @@ public class enemyManager : MonoBehaviour
             moveIndex++;
             if (moveIndex >= moveOrder.Count)
             {
-                endTurn();
+                bm.changeTurn(0);
                 return;
             }
             movePiece(moveOrder[moveIndex]);
             return;
         }
-        currentPiece.moveToTile(currentPiece.intention, true);
+        if (currentPiece.alive)//moving existing piece
+        {
+            currentPiece.moveToTile(currentPiece.intention, true);
+        }
+        else //placing new piece
+        {
+            spawnDelay = spawnDelayMax;
+            bm.placeNewPiece(currentPiece, currentPiece.intention);
+        }
     }
 
     public void findAllPieces()
@@ -292,6 +346,17 @@ public class enemyManager : MonoBehaviour
         for (int i = 0; i < original.Count; i++)
         {
             copy.Add(original[i]);
+        }
+    }
+
+    public void prepareSpawns()
+    {
+        for (int i = 0; i < 10; i++)
+        {
+            piece newPiece = Instantiate(gm.Pieces[0], new Vector3(1000, 1000, 0), Quaternion.identity).GetComponent<piece>();
+            newPiece.team = 1;
+            newPiece.init();
+            spawnPlan.Add(newPiece);
         }
     }
 }

@@ -6,10 +6,10 @@ public class step1pawn : piece
 {
     public override void specificInit()
     {
-        moveType = LINE;
+        moveType = STEP;
         moveRange = 3;
 
-        transform.localScale = new Vector3(0.3f, 0.3f, 1);
+        transform.localScale = new Vector3(1.8f, 1.8f, 1);
     }
 
     public override void specificUpdate()

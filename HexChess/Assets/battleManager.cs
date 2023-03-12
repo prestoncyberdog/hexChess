@@ -7,35 +7,37 @@ public class battleManager : MonoBehaviour
 {
     public gameManager gm;
     public enemyManager em;
+    public uiManager um;
+    public mapGenerator generator;
 
-    public tile root;
     public tile[] allTiles;
     public List<piece> allPieces;
-    public float spacingFactor;
-    public float tileScale;
-    public int mapRadius;
+    public objective[] allObjectives;
+
 
     public piece selectedPiece;
     public bool holdingPiece;
     public bool justClicked;
     public bool playersTurn;
+    public int playsRemaining;
 
     void Start()
     {
         gm = GameObject.FindGameObjectWithTag("gameManager").GetComponent<gameManager>();
         gm.bm = this;
         em = Instantiate(gm.EnemyManager, transform.position, Quaternion.identity).GetComponent<enemyManager>();
+        um = Instantiate(gm.UIManager, transform.position, Quaternion.identity).GetComponent<uiManager>();
+        generator = Instantiate(gm.MapGenerator, transform.position, Quaternion.identity).GetComponent<mapGenerator>();
 
         allPieces = new List<piece>();
-        spacingFactor = 1.1f;
-        mapRadius = 7;
-        tileScale = 0.15f;
-        spawnMap();
+        generator.init();
+        gm.createInitialTeam();//for testing only, team will exist once we have other scenes
         em.init();
-        playersTurn = true;
+        um.init();
+        changeTurn(0);
 
         //for now, manually force some pieces onto the board
-        for (int i = 0;i<40;i++)
+        /*for (int i = 0;i<40;i++)
         {
             tile place = allTiles[Random.Range(0, allTiles.Length)];
             if (place.thisPiece == null)
@@ -46,7 +48,8 @@ public class battleManager : MonoBehaviour
                 newPiece.team = 0;
                 newPiece.init();
             }
-        }
+        }*/
+
         resetTargets(true);
     }
 
@@ -76,9 +79,58 @@ public class battleManager : MonoBehaviour
             if (Input.GetMouseButtonUp(0))
             {
                 holdingPiece = false;
-                selectedPiece.transform.position = selectedPiece.thisTile.transform.position;
+                if (selectedPiece.alive)
+                {
+                    selectedPiece.transform.position = selectedPiece.thisTile.transform.position;
+                }
+                else
+                {
+                    selectedPiece.transform.position = selectedPiece.thisSlot.transform.position;
+                }
             }
         }
+    }
+
+    public void changeTurn(int whosTurn)
+    {
+        em.unexhaustPieces();
+        playersTurn = (whosTurn == 0);
+        giveObjectiveBonuses(whosTurn);
+        resetHighlighting();
+    }
+
+    //awards plays and energy for each objective controlled
+    public void giveObjectiveBonuses(int currentPlayer)
+    {
+        playsRemaining = 0;
+        for (int i = 0;i<allObjectives.Length;i++)
+        {
+            if (allObjectives[i].team == currentPlayer)
+            {
+                playsRemaining++;
+            }
+        }
+    }
+
+    //places new piece, but does not create it, piece must already exist and be on the correct team
+    public void placeNewPiece(piece newPiece, tile newTile)
+    {
+        newPiece.alive = true;
+        newPiece.exhausted = true;
+        newPiece.placePiece(newTile, true);
+        newPiece.transform.position = newTile.transform.position;
+        playsRemaining--;
+        if (newPiece.thisSlot != null)
+        {
+            newPiece.thisSlot.thisPiece = null;
+            newPiece.thisSlot.setColor();
+            newPiece.thisSlot = null;
+        }
+        if (!allPieces.Contains(newPiece))
+        {
+            allPieces.Add(newPiece);
+        }
+        resetHighlighting();
     }
 
     //reset distance measures for all tiles
@@ -104,9 +156,19 @@ public class battleManager : MonoBehaviour
         {
             allTiles[i].gameObject.GetComponent<SpriteRenderer>().color = allTiles[i].defaultColor;
         }
-        if (selectedPiece != null)
+        if (selectedPiece != null && selectedPiece.alive)
         {
             selectedPiece.highlightCandidates();
+        }
+        else if (selectedPiece != null && !selectedPiece.alive)
+        {
+            for (int i = 0; i < allTiles.Length; i++)
+            {
+                if (allTiles[i].isValidPlacement(0, true))
+                {
+                    allTiles[i].gameObject.GetComponent<SpriteRenderer>().color = allTiles[i].candidateColor;
+                }
+            }
         }
     }
 
@@ -126,44 +188,5 @@ public class battleManager : MonoBehaviour
         return nearest;
     }
 
-    public void spawnMap()
-    {
-        root = Instantiate(gm.Tile, new Vector3(0, 0, 0), Quaternion.identity).GetComponent<tile>();
-        root.init(tileScale);
-        root.distance = 0;
-        Queue q = new Queue();
-        q.Enqueue(root);
-        tile activeTile;
-        while (q.Count > 0)
-        {
-            activeTile = (tile)q.Dequeue();
-            for (int i = 0; i < activeTile.neighbors.Length; i++)
-            {
-                //if neighbor exists already, do nothing
-                //this depends on invariant that existing tiles will already be linked
-                if (activeTile.neighbors[i] == null)
-                {
-                    float angle = (-60 * i + 60) * Mathf.Deg2Rad;//angle of next neighbor
-                    float dist = 5 * Mathf.Pow(3, 0.5f) * 0.5f * tileScale * spacingFactor;//5 * (root 3)/2 * scale
-                    Vector3 newPos = new Vector3(
-                        activeTile.transform.position.x + Mathf.Cos(angle) * dist,
-                        activeTile.transform.position.y + Mathf.Sin(angle) * dist,
-                        activeTile.transform.position.z);
-                    tile temp = Instantiate(gm.Tile, newPos, Quaternion.identity).GetComponent<tile>();
-                    temp.init(tileScale);
-                    temp.distance = activeTile.distance + 1;
-                    if (temp.distance < mapRadius)
-                    {
-                        q.Enqueue(temp);
-                    }
-                }
-            }
-        }
-        GameObject[] tileGameObjects = GameObject.FindGameObjectsWithTag("tile");
-        allTiles = new tile[tileGameObjects.Length];
-        for (int i = 0;i<tileGameObjects.Length;i++)
-        {
-            allTiles[i] = tileGameObjects[i].GetComponent<tile>();
-        }
-    }
+    
 }

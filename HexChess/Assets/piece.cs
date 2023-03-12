@@ -31,6 +31,8 @@ public class piece : MonoBehaviour
     public bool hypoAlive;
     public List<tile> hypoTargets;
 
+    public teamSlot thisSlot;
+
     public tile newTile;
     public float moveRate;
     public piece capturing;
@@ -47,9 +49,13 @@ public class piece : MonoBehaviour
 
         value = 1;
         exhausted = false;
-        alive = true;
-        bm.allPieces.Add(this);
+        if (thisTile != null)
+        {
+            alive = true;
+            bm.allPieces.Add(this);
+        }
         specificInit();
+        transform.localScale = new Vector3(transform.localScale.x * bm.generator.tileScale, transform.localScale.y * bm.generator.tileScale, 1);
 
         updateTargeting(true);
         setColor();
@@ -193,11 +199,7 @@ public class piece : MonoBehaviour
     public void getCaptured()
     {
         alive = false;
-        while (targets.Count > 0)
-        {
-            targets[0].targetedBy.Remove(this);
-            targets.RemoveAt(0);
-        }
+        updateTargeting(true);//removes all targeting
         bm.allPieces.Remove(this);
         if (team == 0)
         {
@@ -208,6 +210,20 @@ public class piece : MonoBehaviour
             bm.em.enemyPieces.Remove(this);
         }
         Destroy(gameObject);
+    }
+
+    //moves piece to other slot, swapping if it was occupied
+    public void moveToSlot(teamSlot newSlot)
+    {
+        teamSlot oldSlot = thisSlot;
+        oldSlot.thisPiece = newSlot.thisPiece;
+        if (newSlot.thisPiece != null)
+        {
+            newSlot.thisPiece.thisSlot = oldSlot;
+            newSlot.thisPiece.transform.position = oldSlot.transform.position;
+        }
+        thisSlot = newSlot;
+        newSlot.thisPiece = this;
     }
 
     public void setColor()
@@ -232,6 +248,10 @@ public class piece : MonoBehaviour
 
     public void highlightCandidates()
     {
+        if (!alive)
+        {
+            return;
+        }
         thisTile.gameObject.GetComponent<SpriteRenderer>().color = thisTile.selectedColor;
         for (int i = 0;i< targets.Count;i++)
         {
@@ -244,6 +264,10 @@ public class piece : MonoBehaviour
 
     private void findAllCandidates(bool real)
     {
+        if ((real && !alive) || (!real && !hypoAlive))
+        {
+            return;
+        }
         bm.resetTiles();
         if (real)
         {
@@ -292,13 +316,14 @@ public class piece : MonoBehaviour
                     otherTile = activeTile.neighbors[i];
                     if (activeTile.distance < moveRange && 
                         otherTile.distance > activeTile.distance + 1 && 
+                        otherTile.thisObjective == null &&
                             ((real && (activeTile == thisTile || activeTile.thisPiece == null)) ||
                             (!real && (activeTile == hypoTile || activeTile.hypoPiece == null))))
                     {
                         q.Enqueue(otherTile);
                         otherTile.distance = activeTile.distance + 1;
                         if (otherTile.distance <= moveRange && ((real && !targets.Contains(otherTile)) ||
-                                                                (!real && !hypoTargets.Contains(otherTile)))) // here, otherTile is a target we can maybe move to
+                                                               (!real && !hypoTargets.Contains(otherTile))))  // here, otherTile is a target we can maybe move to
                         {
                             if (real)
                             {
@@ -341,7 +366,8 @@ public class piece : MonoBehaviour
                     {
                         q.Enqueue(otherTile);
                         otherTile.distance = activeTile.distance + 1;
-                        if (otherTile.distance == moveRange && ((real && !targets.Contains(otherTile)) ||
+                        if (otherTile.distance == moveRange && otherTile.thisObjective == null && 
+                                                                ((real && !targets.Contains(otherTile)) ||
                                                                 (!real && !hypoTargets.Contains(otherTile)))) // here, otherTile is a target we can maybe move to
                         {
                             if (real)
@@ -384,13 +410,14 @@ public class piece : MonoBehaviour
                     otherTile = activeTile.neighbors[i];
                     if (activeTile.distance < moveRange &&
                         otherTile.distance > activeTile.distance + 1 &&
+                        otherTile.thisObjective == null &&
                             ((real && (activeTile == thisTile || activeTile.thisPiece == null)) ||
                             (!real && (activeTile == hypoTile || activeTile.hypoPiece == null))))
                     {
                         continueSearch = true;
                         otherTile.distance = activeTile.distance + 1;
                         if (otherTile.distance <= moveRange && ((real && !targets.Contains(otherTile)) ||
-                                                                (!real && !hypoTargets.Contains(otherTile)))) // here, otherTile is a target we can maybe move to
+                                                               (!real && !hypoTargets.Contains(otherTile)))) // here, otherTile is a target we can maybe move to
                         {
                             if (real)
                             {
