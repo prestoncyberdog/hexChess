@@ -18,7 +18,9 @@ public class piece : MonoBehaviour
 
     public int moveType;
     public int moveRange;
-    public int value;
+    public float value;
+    public int cost;
+    public float qualityBonus;
     public int team;
     public tile intention;//used by AI
 
@@ -47,7 +49,7 @@ public class piece : MonoBehaviour
         enemyColor = new Color(1f, 0.2f, 0.2f);
         exhaustedEnemyColor = new Color(1f, 0.4f, 0.4f);
 
-        value = 1;
+        cost = 1;
         exhausted = false;
         if (thisTile != null)
         {
@@ -55,6 +57,7 @@ public class piece : MonoBehaviour
             bm.allPieces.Add(this);
         }
         specificInit();
+        value = cost + qualityBonus;
         transform.localScale = new Vector3(transform.localScale.x * bm.generator.tileScale, transform.localScale.y * bm.generator.tileScale, 1);
 
         updateTargeting(true);
@@ -95,6 +98,7 @@ public class piece : MonoBehaviour
         }
         updateTargeting(real);
         targetTile.updateTargeting(real);
+        targetTile.checkNearbyObjectives(real);
     }
 
     //begins moving to new tile, updates location and targeting info
@@ -129,6 +133,8 @@ public class piece : MonoBehaviour
         updateTargeting(real);
         oldTile.updateTargeting(real);
         targetTile.updateTargeting(real);
+        oldTile.checkNearbyObjectives(real);
+        targetTile.checkNearbyObjectives(real);
     }
 
     //take care of delayed effects of move like coloring, capturing, and sound effects
@@ -164,13 +170,32 @@ public class piece : MonoBehaviour
         {
             return ((target.thisPiece == null || target.thisPiece.team != team) &&
                     target.obstacle == 0 &&
+                    target.thisObjective == null &&
                     exhausted == false);
         }
         else
         {
             return ((target.hypoPiece == null || target.hypoPiece.team != team) &&
                     target.hypoObstacle == 0 &&
+                    target.thisObjective == null &&
                     hypoExhausted == false);
+        }
+    }
+
+    public bool canAfford()
+    {
+        return ((team == 0 && bm.playerEnergy >= cost) || (team == 1 && bm.enemyEnergy >= cost));
+    }
+
+    public void payEnergyCost()
+    {
+        if (team == 0)
+        {
+            bm.playerEnergy -= cost;
+        }
+        else if (team == 1)
+        {
+            bm.enemyEnergy -= cost;
         }
     }
 

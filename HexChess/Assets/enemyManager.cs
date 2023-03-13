@@ -23,8 +23,8 @@ public class enemyManager : MonoBehaviour
         gm = GameObject.FindGameObjectWithTag("gameManager").GetComponent<gameManager>();
         bm = gm.bm;
 
-        groupSize = 2;
-        spawnDelayMax = 1;
+        groupSize = 1;
+        spawnDelayMax = 1f;
 
         moveOrder = new List<piece>();
         moveIndex = 0;
@@ -183,6 +183,7 @@ public class enemyManager : MonoBehaviour
     //decide which pieces to place and setting their intentions, using hypo board after other moves are done
     public void decidePlacements()
     {
+        prepareSpawns();
         bool stillPlacing = true;
         List<tile> spawnTiles = new List<tile>();
         for (int i = 0;i<bm.allTiles.Length;i++)
@@ -202,6 +203,11 @@ public class enemyManager : MonoBehaviour
         while (bm.playsRemaining > 0 && stillPlacing)
         {
             piece currentPiece = spawnPlan[0];
+            if (!currentPiece.canAfford())
+            {
+                stillPlacing = false;
+                break;
+            }
             spawnPlan.Remove(currentPiece);
             //choose tile
             bestTile = spawnTiles[0];
@@ -226,6 +232,7 @@ public class enemyManager : MonoBehaviour
             //place piece on hypo board
             currentPiece.hypoAlive = true;
             currentPiece.placePiece(bestTile, false);
+            currentPiece.payEnergyCost();
             //plan to place piece in move order
             moveOrder.Add(currentPiece);
             currentPiece.intention = bestTile;
@@ -351,9 +358,13 @@ public class enemyManager : MonoBehaviour
 
     public void prepareSpawns()
     {
+        if (spawnPlan.Count > bm.playsRemaining)
+        {
+            return;
+        }
         for (int i = 0; i < 10; i++)
         {
-            piece newPiece = Instantiate(gm.Pieces[0], new Vector3(1000, 1000, 0), Quaternion.identity).GetComponent<piece>();
+            piece newPiece = Instantiate(gm.Pieces[Random.Range(0, gm.Pieces.Length)], new Vector3(1000, 1000, 0), Quaternion.identity).GetComponent<piece>();
             newPiece.team = 1;
             newPiece.init();
             spawnPlan.Add(newPiece);

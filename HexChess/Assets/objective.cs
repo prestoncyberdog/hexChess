@@ -35,6 +35,57 @@ public class objective : MonoBehaviour
         
     }
 
+    public void checkStatus(bool real)
+    {
+        int playerCount = 0;
+        int enemyCount = 0;
+        if (real)
+        {
+            for (int i = 0; i < thisTile.neighbors.Length; i++)
+            {
+                if (thisTile.neighbors[i] != null && thisTile.neighbors[i].thisPiece != null && thisTile.neighbors[i].thisPiece.team == 0)
+                {
+                    playerCount++;
+                }
+                else if (thisTile.neighbors[i] != null && thisTile.neighbors[i].thisPiece != null && thisTile.neighbors[i].thisPiece.team == 1)
+                {
+                    enemyCount++;
+                }
+            }
+            if (playerCount - enemyCount >= 4)
+            {
+                team = 0;
+            }
+            else if (enemyCount - playerCount >= 4)
+            {
+                team = 1;
+            }
+            setColor();
+        }
+        else
+        {
+            for (int i = 0; i < thisTile.neighbors.Length; i++)
+            {
+                if (thisTile.neighbors[i] != null && thisTile.neighbors[i].hypoPiece != null && thisTile.neighbors[i].hypoPiece.team == 0)
+                {
+                    playerCount++;
+                }
+                else if (thisTile.neighbors[i] != null && thisTile.neighbors[i].hypoPiece != null && thisTile.neighbors[i].hypoPiece.team == 1)
+                {
+                    enemyCount++;
+                }
+            }
+            if (playerCount - enemyCount >= 4)
+            {
+                hypoTeam = 0;
+            }
+            else if (enemyCount - playerCount >= 4)
+            {
+                hypoTeam = 1;
+            }
+        }
+    }
+
     public void setColor()
     {
         if (team == -1)

@@ -20,6 +20,8 @@ public class battleManager : MonoBehaviour
     public bool justClicked;
     public bool playersTurn;
     public int playsRemaining;
+    public int playerEnergy;
+    public int enemyEnergy;
 
     void Start()
     {
@@ -108,6 +110,14 @@ public class battleManager : MonoBehaviour
             if (allObjectives[i].team == currentPlayer)
             {
                 playsRemaining++;
+                if (allObjectives[i].team == 0 && playersTurn)
+                {
+                    playerEnergy += 10;
+                }
+                else if (allObjectives[i].team == 1 && !playersTurn)
+                {
+                    enemyEnergy += 10;
+                }
             }
         }
     }
@@ -155,6 +165,10 @@ public class battleManager : MonoBehaviour
         for (int i = 0; i<allTiles.Length; i++)
         {
             allTiles[i].gameObject.GetComponent<SpriteRenderer>().color = allTiles[i].defaultColor;
+            if (allTiles[i].thisPiece != null && allTiles[i].thisPiece.exhausted)
+            {
+                allTiles[i].gameObject.GetComponent<SpriteRenderer>().color = allTiles[i].exhaustedColor;
+            }
         }
         if (selectedPiece != null && selectedPiece.alive)
         {
@@ -170,6 +184,7 @@ public class battleManager : MonoBehaviour
                 }
             }
         }
+        um.resetHighlighting();
     }
 
     public tile findNearestTileToMouse()

@@ -19,8 +19,9 @@ public class mapGenerator : MonoBehaviour
         spacingFactor = 1.1f;
         mapRadius = 7;
         tileScale = 0.15f;
-        spawnMap();
+        spawnMap();//spawns tiles, not obstacles
         spawnObjectives();
+        linkTilesToObjectives();//to be done only after map fully determined
     }
 
     void Update()
@@ -50,6 +51,43 @@ public class mapGenerator : MonoBehaviour
                 newObjective.init();
                 bm.allObjectives[i] = newObjective;
             }
+        }
+    }
+
+    public void linkTilesToObjectives()
+    {
+        for (int i = 0;i<bm.allTiles.Length;i++)
+        {
+            bm.allTiles[i].objectives = new objective[bm.allObjectives.Length];
+            bm.allTiles[i].objectiveDists = new int[bm.allObjectives.Length];
+        }
+
+        int objectiveIndex = 0;
+        tile activeTile;
+        tile otherTile;
+        Queue q = new Queue();
+        for (int i = 0; i < bm.allObjectives.Length; i++)
+        {
+            bm.resetTiles();
+            activeTile = bm.allObjectives[i].thisTile;
+            q.Enqueue(activeTile);
+            activeTile.distance = 0;
+            while (q.Count > 0 && objectiveIndex < bm.allObjectives.Length)
+            {
+                activeTile = (tile)q.Dequeue();
+                activeTile.objectives[objectiveIndex] = bm.allObjectives[i];
+                activeTile.objectiveDists[objectiveIndex] = activeTile.distance;
+                for (int j = 0; j < activeTile.neighbors.Length; j++)
+                {
+                    if (activeTile.neighbors[j] != null && activeTile.neighbors[j].distance > activeTile.distance + 1)
+                    {
+                        otherTile = activeTile.neighbors[j];
+                        q.Enqueue(otherTile);
+                        otherTile.distance = activeTile.distance + 1;
+                    }
+                }
+            }
+            objectiveIndex++;
         }
     }
 

@@ -29,7 +29,7 @@ public class gameManager : MonoBehaviour
         playerPieces = new List<piece>();
         for (int i = 0; i < 11; i++)
         {
-            piece newPiece = Instantiate(Pieces[0], AWAY, Quaternion.identity).GetComponent<piece>();
+            piece newPiece = Instantiate(Pieces[Random.Range(0,Pieces.Length)], AWAY, Quaternion.identity).GetComponent<piece>();
             newPiece.team = 0;
             newPiece.init();
             playerPieces.Add(newPiece);

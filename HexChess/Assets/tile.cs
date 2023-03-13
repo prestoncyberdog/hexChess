@@ -10,6 +10,7 @@ public class tile : MonoBehaviour
     public Color defaultColor;
     public Color candidateColor;
     public Color selectedColor;
+    public Color exhaustedColor;
 
     public tile[] neighbors;
     public float scale;
@@ -23,6 +24,9 @@ public class tile : MonoBehaviour
     public piece hypoPiece;
     public int hypoObstacle;
 
+    public objective[] objectives;
+    public int[] objectiveDists;
+
 
     public void init(float tileScale)
     {
@@ -35,6 +39,7 @@ public class tile : MonoBehaviour
         defaultColor = new Color(0.8f, 0.8f, 0.8f);
         candidateColor = new Color(0.8f, 0.8f, 0.6f);
         selectedColor = new Color(0.8f, 0.8f, 0.4f);
+        exhaustedColor = new Color(0.7f, 0.7f, 0.7f);
         this.GetComponent<SpriteRenderer>().color = defaultColor;
         transform.Rotate(new Vector3(0, 0, 30));
         distance = 1000;
@@ -62,9 +67,10 @@ public class tile : MonoBehaviour
                 bm.resetTiles();
                 bm.resetHighlighting();
             }
-            else if(bm.selectedPiece != null && !bm.selectedPiece.alive && bm.playersTurn && isValidPlacement(0, true))//placing piece
+            else if(bm.selectedPiece != null && !bm.selectedPiece.alive && bm.playersTurn && isValidPlacement(0, true) && bm.selectedPiece.canAfford())//placing piece
             {
                 bm.placeNewPiece(bm.selectedPiece, this);
+                bm.selectedPiece.payEnergyCost();
             }
             if (thisPiece != null)
             {
@@ -92,10 +98,11 @@ public class tile : MonoBehaviour
                 bm.selectedPiece.arriveOnTile();
                 bm.resetHighlighting();
             }
-            else if (bm.selectedPiece != null && bm.holdingPiece && !bm.selectedPiece.alive && bm.playersTurn && isValidPlacement(0, true))//placing piece
+            else if (bm.selectedPiece != null && bm.holdingPiece && !bm.selectedPiece.alive && bm.playersTurn && isValidPlacement(0, true) && bm.selectedPiece.canAfford())//placing piece
             {
                 bm.placeNewPiece(bm.selectedPiece, this);
                 bm.holdingPiece = false;
+                bm.selectedPiece.payEnergyCost();
             }
         }
     }
@@ -124,57 +131,38 @@ public class tile : MonoBehaviour
         }
     }
 
-    //finds distance to nearest objective that doesn't belong to the given team (set team to -10 to get any objective)
-    /*public int findDistFromObjective(int team)
-    {
-        bm.resetTiles();
-        int result = -1;
-        Queue q = new Queue();
-        tile activeTile = this;
-        tile otherTile;
-        q.Enqueue(activeTile);
-        activeTile.distance = 0;
-        while (q.Count > 0)
-        {
-            if (activeTile.thisObjective != null && activeTile.thisObjective.team != team)
-            {
-                result = activeTile.distance;
-                return result;
-            }
-            activeTile = (tile)q.Dequeue();
-            for (int i = 0; i < activeTile.neighbors.Length; i++)
-            {
-                if (activeTile.neighbors[i] != null)
-                {
-                    otherTile = activeTile.neighbors[i];
-                    q.Enqueue(otherTile);
-                    otherTile.distance = activeTile.distance + 1;
-                }
-            }
-        }
-        return -1;
-    }*/
-
     public bool isValidPlacement(int team, bool real)//returns whether placing a piece here is possible right now
     {
         if (real)
         {
-            return (obstacle == 0 && thisPiece == null && bm.playsRemaining > 0 && neighborsObjective(team, real));
+            return (obstacle == 0 && thisPiece == null && thisObjective == null && bm.playsRemaining > 0 && neighborsObjective(team, real));
         }
-        return (hypoObstacle == 0 && hypoPiece == null && bm.playsRemaining > 0 && neighborsObjective(team, real));
+        return (hypoObstacle == 0 && hypoPiece == null && thisObjective == null && bm.playsRemaining > 0 && neighborsObjective(team, real));
     }
 
-    public bool neighborsObjective(int team, bool real)
+    public bool neighborsObjective(int team, bool real)//returns whether tile neighbors objective controlled by the given team
     {
-        for (int i = 0; i < neighbors.Length; i++)
+        for (int i = 0; i < objectives.Length; i++)
         {
-            if (neighbors[i] != null && neighbors[i].thisObjective != null && ((real && neighbors[i].thisObjective.team == team) ||
-                                                                              (!real && neighbors[i].thisObjective.hypoTeam == team)))
+            if (objectiveDists[i] == 1 && ((real && objectives[i].team == team) ||
+                                          (!real && objectives[i].hypoTeam == team)))
             {
                 return true;
             }
         }
         return false;
+    }
+
+    //updates nearby objectives if needed
+    public void checkNearbyObjectives(bool real)
+    {
+        for (int i = 0; i<objectives.Length;i++)
+        {
+            if (objectiveDists[i] == 1)
+            {
+                objectives[i].checkStatus(real);
+            }
+        }
     }
 
     public void findNeighbors()
