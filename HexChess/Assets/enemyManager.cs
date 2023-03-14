@@ -11,23 +11,23 @@ public class enemyManager : MonoBehaviour
     public List<piece> enemyPieces;
     public List<piece> spawnPlan;
     public List<piece> moveOrder;
-    public List<piece> decideOrder;
-    public int moveIndex;
+    public List<piece> decideOrder; 
+    public List<recursiveActionItem> stack;
 
     public int groupSize;//the number of units that can be considered together
     public float spawnDelay;
     public float spawnDelayMax;
+    public bool readyToEnd;
 
     public void init()
     {
         gm = GameObject.FindGameObjectWithTag("gameManager").GetComponent<gameManager>();
         bm = gm.bm;
 
-        groupSize = 1;
+        groupSize = 3;
         spawnDelayMax = 1f;
 
         moveOrder = new List<piece>();
-        moveIndex = 0;
 
         spawnPlan = new List<piece>();
         prepareSpawns();
@@ -35,43 +35,17 @@ public class enemyManager : MonoBehaviour
 
     void Update()
     {
-        if (bm.playersTurn)
-        {
-            return;
-        }
-        else if (moveOrder[moveIndex].newTile != null || spawnDelay > 0)//current piece is still moving
-        {
-            spawnDelay -= Time.deltaTime;
-            return;
-        }
-        else
-        {
-            moveIndex++;
-            if (moveIndex >= moveOrder.Count)
-            {
-                bm.changeTurn(0);
-                return;
-            }
-            movePiece(moveOrder[moveIndex]);
-        }
+
     }
 
     public void takeTurn()
     {
+        readyToEnd = false;
         findAllPieces();
         bm.changeTurn(1);
         copyHypoBoard();
         decideActions();
-        decidePlacements();
-        //begin moving pieces
-        if (moveOrder.Count == 0)
-        {
-            bm.changeTurn(0);
-        }
-        else
-        {
-            movePiece(moveOrder[0]);
-        }
+        StartCoroutine(moveAllPieces());
     }
 
     //each piece must recieve an intention tile and the pieces will be ordered in moveOrder
@@ -79,11 +53,12 @@ public class enemyManager : MonoBehaviour
     {
         orderPieces();
         moveOrder = new List<piece>();
-        moveIndex = 0;
         while (decideOrder.Count > 0)
         {
-            decideActionRecur(true);
+            //decideActionRecur(true);
+            decideActionsNonRecursive();
         }
+        decidePlacements();
     }
 
     //chooses and adds 1 action to the moveOrder list, removes relevant piece from decideOrder
@@ -97,7 +72,7 @@ public class enemyManager : MonoBehaviour
         tile previousTile = null;
         tile[] hypoTargetCopy;
 
-        for (int i = 0; i < decideOrder.Count && i < groupSize; i++)//todo: let pieces choose to not move
+        for (int i = 0; i < decideOrder.Count && i < groupSize; i++)
         {
             if (!decideOrder[i].hypoExhausted)
             {
@@ -173,6 +148,130 @@ public class enemyManager : MonoBehaviour
         return bestVal;
     }
 
+    public void decideActionsNonRecursive()
+    {
+        //create stack 
+        stack = new List<recursiveActionItem>();
+        recursiveActionItem current = new recursiveActionItem();
+        current.pieceIndex = -1;
+        current.bestVal = -1;
+        stack.Insert(0, current);
+
+        while (stack.Count > 0)
+        {
+            current = stack[0];
+            //update indices
+            current.tileIndex++;//advance inner (tile) loop
+            if (current.targetListCopy == null || current.tileIndex >= current.targetListCopy.Length)
+            {
+                do
+                {
+                    current.pieceIndex += 1;//advance outer (piece) loop
+                } while (current.pieceIndex < decideOrder.Count && current.pieceIndex < groupSize && decideOrder[current.pieceIndex].hypoExhausted);//find a piece that isnt exhausted
+                if (current.pieceIndex < decideOrder.Count && current.pieceIndex < groupSize)
+                {
+                    current.tileIndex = -1;//start at -1 to consider not moving first
+                    current.targetListCopy = new tile[decideOrder[current.pieceIndex].hypoTargets.Count];
+                    decideOrder[current.pieceIndex].hypoTargets.CopyTo(current.targetListCopy);
+                }
+            }
+            //consider going up
+            if (!(current.pieceIndex < decideOrder.Count && current.pieceIndex < groupSize))
+            {
+                if (current.bestVal == -1)//we did not manage to recurse on any other pieces
+                {
+                    current.bestVal = evaluatePosition();
+                }
+                goUpLevel(current);
+            }
+            else
+            {
+                goDownLevel(current);
+            }
+        }
+    }
+
+    //moves up one level in position evaluation, updating stack item above and reverting hypo move
+    public void goUpLevel(recursiveActionItem current)
+    {
+        if (stack.Count == 1)//here we can't go up so we return our result
+        {
+            //update hypo board to include new move
+            if (current.bestTile.hypoPiece != null)
+            {
+                current.bestTile.hypoPiece.hypoAlive = false;
+            }
+            current.bestPiece.moveToTile(current.bestTile, false);
+
+            moveOrder.Add(current.bestPiece);
+            current.bestPiece.intention = current.bestTile;
+            decideOrder.Remove(current.bestPiece);
+
+            stack.RemoveAt(0);
+            return;
+        }
+        recursiveActionItem above = stack[1];
+        //evaluate result of move
+        if (current.bestVal > above.bestVal)
+        {
+            above.bestVal = current.bestVal;
+            above.bestPiece = decideOrder[above.pieceIndex];
+            if (above.tileIndex == -1)//piece did not move
+            {
+                above.bestTile = decideOrder[above.pieceIndex].hypoTile;
+            }
+            else
+            {
+                above.bestTile = above.targetListCopy[above.tileIndex];
+            }
+        }
+
+        //undo hypo move
+        decideOrder[above.pieceIndex].moveToTile(above.previousTile, false);
+        decideOrder[above.pieceIndex].hypoExhausted = false;
+        decideOrder[above.pieceIndex].capturing = null;
+        if (above.capturedPiece != null)
+        {
+            above.capturedPiece.placePiece(above.targetListCopy[above.tileIndex], false);
+            above.capturedPiece.hypoAlive = true;
+        }
+        above.capturedPiece = null;
+
+        //remove level from stack
+        stack.RemoveAt(0);
+    }
+
+    public void goDownLevel(recursiveActionItem current)
+    {
+        if (current.tileIndex == -1)//piece not moving
+        {
+            //make hypo move
+            decideOrder[current.pieceIndex].hypoExhausted = true;
+            current.previousTile = decideOrder[current.pieceIndex].hypoTile;
+        }
+        else
+        {
+            if (!(decideOrder[current.pieceIndex].isValidCandidate(current.targetListCopy[current.tileIndex], false)))
+            {
+                return;//not a valid move, do nothing
+            }
+            //make hypo move
+            current.previousTile = decideOrder[current.pieceIndex].hypoTile;
+            if (current.targetListCopy[current.tileIndex].hypoPiece != null)
+            {
+                current.capturedPiece = current.targetListCopy[current.tileIndex].hypoPiece;
+                current.capturedPiece.hypoAlive = false;
+            }
+            decideOrder[current.pieceIndex].moveToTile(current.targetListCopy[current.tileIndex], false);
+        }
+
+        //add new level to stack
+        recursiveActionItem below = new recursiveActionItem();
+        below.pieceIndex = -1;
+        below.bestVal = -1;
+        stack.Insert(0,below);
+    }
+
     //evaluates the hypothetical position
     //should also consider end of game?
     public float evaluatePosition()
@@ -239,6 +338,7 @@ public class enemyManager : MonoBehaviour
             spawnTiles.Remove(bestTile);
             bm.playsRemaining--;
         }
+        readyToEnd = true; //allows piece moving coroutine to end turn when ready
     }
 
     //determines the order in which the ai will consider its pieces
@@ -252,9 +352,53 @@ public class enemyManager : MonoBehaviour
         }
     }
 
+    public IEnumerator moveAllPieces()
+    {
+        while (!bm.playersTurn)
+        {
+            if (bm.movingPiece == null)
+            {
+                if (spawnDelay > 0)
+                {
+                    spawnDelay -= Time.deltaTime;
+                }
+                else if (moveOrder.Count > 0)
+                {
+                    movePiece(moveOrder[0]);
+                    moveOrder.RemoveAt(0);
+                }
+                else if (readyToEnd)
+                {
+                    bm.changeTurn(0);
+                }
+            }
+            yield return null;
+        }
+    }
+
+    public void movePiece(piece currentPiece)
+    {
+        if (currentPiece.alive)//moving existing piece
+        {
+            if (currentPiece.intention != currentPiece.thisTile)
+            {
+                currentPiece.moveToTile(currentPiece.intention, true);
+                StartCoroutine(currentPiece.moveTowardsNewTile());
+            }
+        }
+        else //placing new piece
+        {
+            if (moveOrder.Count >  1 || !readyToEnd)//its not our final placement
+            {
+                spawnDelay = spawnDelayMax;
+            }
+            bm.placeNewPiece(currentPiece, currentPiece.intention);
+        }
+    }
+
     public void copyHypoBoard()
     {
-        for (int i = 0;i<bm.allPieces.Count;i++)
+        for (int i = 0; i < bm.allPieces.Count; i++)
         {
             bm.allPieces[i].hypoAlive = bm.allPieces[i].alive;
             bm.allPieces[i].hypoExhausted = false;
@@ -263,7 +407,7 @@ public class enemyManager : MonoBehaviour
             bm.allPieces[i].hypoTargets = new List<tile>();
             copyTileList(bm.allPieces[i].targets, bm.allPieces[i].hypoTargets);
         }
-        for (int i = 0;i<bm.allTiles.Length;i++)
+        for (int i = 0; i < bm.allTiles.Length; i++)
         {
             bm.allTiles[i].hypoPiece = bm.allTiles[i].thisPiece;
             bm.allTiles[i].hypoObstacle = bm.allTiles[i].obstacle;
@@ -271,33 +415,9 @@ public class enemyManager : MonoBehaviour
             bm.allTiles[i].hypoTargetedBy = new List<piece>();
             copyPieceList(bm.allTiles[i].targetedBy, bm.allTiles[i].hypoTargetedBy);
         }
-        for (int i = 0;i<bm.allObjectives.Length;i++)
+        for (int i = 0; i < bm.allObjectives.Length; i++)
         {
             bm.allObjectives[i].hypoTeam = bm.allObjectives[i].team;
-        }
-    }
-
-    public void movePiece(piece currentPiece)
-    {
-        if (currentPiece.thisTile == currentPiece.intention)//here, we move on to the next piece right away
-        {
-            moveIndex++;
-            if (moveIndex >= moveOrder.Count)
-            {
-                bm.changeTurn(0);
-                return;
-            }
-            movePiece(moveOrder[moveIndex]);
-            return;
-        }
-        if (currentPiece.alive)//moving existing piece
-        {
-            currentPiece.moveToTile(currentPiece.intention, true);
-        }
-        else //placing new piece
-        {
-            spawnDelay = spawnDelayMax;
-            bm.placeNewPiece(currentPiece, currentPiece.intention);
         }
     }
 
@@ -370,4 +490,16 @@ public class enemyManager : MonoBehaviour
             spawnPlan.Add(newPiece);
         }
     }
+}
+
+public class recursiveActionItem
+{
+    public float bestVal;
+    public piece bestPiece;
+    public tile bestTile;
+    public int pieceIndex;
+    public int tileIndex;
+    public tile[] targetListCopy;
+    public piece capturedPiece;
+    public tile previousTile;
 }

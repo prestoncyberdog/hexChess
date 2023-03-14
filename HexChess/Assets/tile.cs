@@ -64,6 +64,7 @@ public class tile : MonoBehaviour
                 bm.selectedPiece.isValidCandidate(this, true))//moving piece
             {
                 bm.selectedPiece.moveToTile(this, true);
+                StartCoroutine(bm.selectedPiece.moveTowardsNewTile());
                 bm.resetTiles();
                 bm.resetHighlighting();
             }

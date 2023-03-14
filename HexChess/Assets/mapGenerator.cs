@@ -51,6 +51,10 @@ public class mapGenerator : MonoBehaviour
                 newObjective.init();
                 bm.allObjectives[i] = newObjective;
             }
+            else
+            {
+                i--;
+            }
         }
     }
 

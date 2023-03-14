@@ -14,7 +14,6 @@ public class battleManager : MonoBehaviour
     public List<piece> allPieces;
     public objective[] allObjectives;
 
-
     public piece selectedPiece;
     public bool holdingPiece;
     public bool justClicked;
@@ -22,6 +21,7 @@ public class battleManager : MonoBehaviour
     public int playsRemaining;
     public int playerEnergy;
     public int enemyEnergy;
+    public piece movingPiece;
 
     void Start()
     {
@@ -37,20 +37,6 @@ public class battleManager : MonoBehaviour
         em.init();
         um.init();
         changeTurn(0);
-
-        //for now, manually force some pieces onto the board
-        /*for (int i = 0;i<40;i++)
-        {
-            tile place = allTiles[Random.Range(0, allTiles.Length)];
-            if (place.thisPiece == null)
-            {
-                piece newPiece = Instantiate(gm.Pieces[0], place.transform.position, Quaternion.identity).GetComponent<piece>();
-                newPiece.thisTile = place;
-                place.thisPiece = newPiece;
-                newPiece.team = 0;
-                newPiece.init();
-            }
-        }*/
 
         resetTargets(true);
     }

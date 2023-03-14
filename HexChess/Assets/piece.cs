@@ -43,7 +43,7 @@ public class piece : MonoBehaviour
     {
         gm = GameObject.FindGameObjectWithTag("gameManager").GetComponent<gameManager>();
         bm = gm.bm;
-        moveRate = 2f * (2 - team);
+        moveRate = 10f * (2 - team);
         playerColor = new Color(0.2f, 0.2f, 1f);
         exhaustedPlayerColor = new Color(0.4f, 0.4f, 1f);
         enemyColor = new Color(1f, 0.2f, 0.2f);
@@ -68,7 +68,7 @@ public class piece : MonoBehaviour
     {
         if (newTile != null)
         {
-            moveTowardsNewTile();
+            //moveTowardsNewTile();
         }
     }
 
@@ -107,7 +107,7 @@ public class piece : MonoBehaviour
         tile oldTile;
         if (real)
         {
-            if (targetTile.thisPiece != null)
+            if (targetTile.thisPiece != null && targetTile.thisPiece != this)
             {
                 capturing = targetTile.thisPiece;
             }
@@ -120,7 +120,7 @@ public class piece : MonoBehaviour
         }
         else //here its a move on the hypo board
         {
-            if (targetTile.hypoPiece != null)
+            if (targetTile.hypoPiece != null && targetTile.hypoPiece != this)
             {
                 capturing = targetTile.hypoPiece;
             }
@@ -151,17 +151,23 @@ public class piece : MonoBehaviour
         bm.resetHighlighting();
     }
 
-    public void moveTowardsNewTile()
+    public IEnumerator moveTowardsNewTile()
     {
-        Vector3 toNextTile = newTile.transform.position - transform.position;
-        if (moveRate * Time.deltaTime > toNextTile.magnitude)//here, we've arrived
+        bm.movingPiece = this;
+        while (newTile != null)
         {
-            arriveOnTile();
+            Vector3 toNextTile = newTile.transform.position - transform.position;
+            if (moveRate * Time.deltaTime > toNextTile.magnitude)//here, we've arrived
+            {
+                arriveOnTile();
+            }
+            else
+            {
+                transform.position = transform.position + toNextTile.normalized * moveRate * Time.deltaTime;
+            }
+            yield return null;
         }
-        else
-        {
-            transform.position = transform.position + toNextTile.normalized * moveRate * Time.deltaTime;
-        }
+        bm.movingPiece = null;
     }
 
     public bool isValidCandidate(tile target, bool real)
