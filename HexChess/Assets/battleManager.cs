@@ -11,7 +11,7 @@ public class battleManager : MonoBehaviour
     public mapGenerator generator;
 
     public tile[] allTiles;
-    public List<piece> allPieces;
+    public List<piece> alivePieces;
     public objective[] allObjectives;
 
     public piece selectedPiece;
@@ -31,7 +31,7 @@ public class battleManager : MonoBehaviour
         um = Instantiate(gm.UIManager, transform.position, Quaternion.identity).GetComponent<uiManager>();
         generator = Instantiate(gm.MapGenerator, transform.position, Quaternion.identity).GetComponent<mapGenerator>();
 
-        allPieces = new List<piece>();
+        alivePieces = new List<piece>();
         generator.init();
         gm.createInitialTeam();//for testing only, team will exist once we have other scenes
         em.init();
@@ -122,9 +122,9 @@ public class battleManager : MonoBehaviour
             newPiece.thisSlot.setColor();
             newPiece.thisSlot = null;
         }
-        if (!allPieces.Contains(newPiece))
+        if (!alivePieces.Contains(newPiece))
         {
-            allPieces.Add(newPiece);
+            alivePieces.Add(newPiece);
         }
         resetHighlighting();
     }
@@ -140,9 +140,9 @@ public class battleManager : MonoBehaviour
 
     public void resetTargets(bool real)
     {
-        for(int i = 0;i<allPieces.Count;i++)
+        for(int i = 0;i< alivePieces.Count;i++)
         {
-            allPieces[i].updateTargeting(real);
+            alivePieces[i].updateTargeting(real);
         }
     }
 
@@ -169,6 +169,10 @@ public class battleManager : MonoBehaviour
                     allTiles[i].gameObject.GetComponent<SpriteRenderer>().color = allTiles[i].candidateColor;
                 }
             }
+        }
+        for (int i = 0;i<allObjectives.Length;i++)
+        {
+            allObjectives[i].setColor();
         }
         um.resetHighlighting();
     }

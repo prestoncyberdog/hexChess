@@ -36,14 +36,16 @@ public class piece : MonoBehaviour
     public teamSlot thisSlot;
 
     public tile newTile;
+    public tile turnStartTile;
     public float moveRate;
     public piece capturing;
+    public bool notMoving;
 
     public void init()
     {
         gm = GameObject.FindGameObjectWithTag("gameManager").GetComponent<gameManager>();
         bm = gm.bm;
-        moveRate = 10f * (2 - team);
+        moveRate = 2 * (2f - team);
         playerColor = new Color(0.2f, 0.2f, 1f);
         exhaustedPlayerColor = new Color(0.4f, 0.4f, 1f);
         enemyColor = new Color(1f, 0.2f, 0.2f);
@@ -54,7 +56,7 @@ public class piece : MonoBehaviour
         if (thisTile != null)
         {
             alive = true;
-            bm.allPieces.Add(this);
+            bm.alivePieces.Add(this);
         }
         specificInit();
         value = cost + qualityBonus;
@@ -66,10 +68,7 @@ public class piece : MonoBehaviour
 
     void Update()
     {
-        if (newTile != null)
-        {
-            //moveTowardsNewTile();
-        }
+
     }
 
     public virtual void specificInit()
@@ -99,6 +98,7 @@ public class piece : MonoBehaviour
         updateTargeting(real);
         targetTile.updateTargeting(real);
         targetTile.checkNearbyObjectives(real);
+        bm.resetHighlighting();
     }
 
     //begins moving to new tile, updates location and targeting info
@@ -231,7 +231,7 @@ public class piece : MonoBehaviour
     {
         alive = false;
         updateTargeting(true);//removes all targeting
-        bm.allPieces.Remove(this);
+        bm.alivePieces.Remove(this);
         if (team == 0)
         {
             bm.em.playerPieces.Remove(this);

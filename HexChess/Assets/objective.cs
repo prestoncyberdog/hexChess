@@ -60,7 +60,6 @@ public class objective : MonoBehaviour
             {
                 team = 1;
             }
-            setColor();
         }
         else
         {
