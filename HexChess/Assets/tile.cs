@@ -92,7 +92,7 @@ public class tile : MonoBehaviour
             {
                 if (thisPiece != null)
                 {
-                    thisPiece.getCaptured();
+                    thisPiece.getCaptured(true);
                 }
                 bm.holdingPiece = false;
                 bm.selectedPiece.moveToTile(this, true);

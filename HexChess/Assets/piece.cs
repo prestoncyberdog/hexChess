@@ -86,12 +86,14 @@ public class piece : MonoBehaviour
     {
         if (real)
         {
+            alive = true;
             newTile = targetTile;
             thisTile = targetTile;
             thisTile.thisPiece = this;
         }
         else //here its a move on the hypo board
         {
+            hypoAlive = true;
             hypoTile = targetTile;
             hypoTile.hypoPiece = this;
         }
@@ -145,7 +147,7 @@ public class piece : MonoBehaviour
         setColor();
         if (capturing != null)
         {
-            capturing.getCaptured();
+            capturing.getCaptured(true);
             capturing = null;
         }
         bm.resetHighlighting();
@@ -227,20 +229,28 @@ public class piece : MonoBehaviour
         findAllCandidates(real);
     }
 
-    public void getCaptured()
+    public void getCaptured(bool real)
     {
-        alive = false;
-        updateTargeting(true);//removes all targeting
-        bm.alivePieces.Remove(this);
-        if (team == 0)
+        if (real)
         {
-            bm.em.playerPieces.Remove(this);
+            alive = false;
+            updateTargeting(real);//removes all targeting
+            bm.alivePieces.Remove(this);
+            if (team == 0)
+            {
+                bm.em.playerPieces.Remove(this);
+            }
+            if (team == 1)
+            {
+                bm.em.enemyPieces.Remove(this);
+            }
+            Destroy(gameObject);
         }
-        if (team == 1)
+        else
         {
-            bm.em.enemyPieces.Remove(this);
+            hypoAlive = false;
+            updateTargeting(real);//removes all hypoTargeting
         }
-        Destroy(gameObject);
     }
 
     //moves piece to other slot, swapping if it was occupied

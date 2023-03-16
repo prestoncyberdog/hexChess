@@ -224,7 +224,7 @@ public class enemyManager : MonoBehaviour
             spawnPlan.Remove(currentPiece);
             //choose tile
             bestTile = spawnTiles[0];
-            bestVal = -1;
+            bestVal = -10000;
             for (int i = 0;i<spawnTiles.Count;i++)
             {
                 //place piece on hypo board
@@ -678,7 +678,7 @@ public class enemyManager : MonoBehaviour
             //update hypo board to include new move
             if (current.bestTile.hypoPiece != null && current.bestTile.hypoPiece != current.bestPiece)
             {
-                current.bestTile.hypoPiece.hypoAlive = false;
+                current.bestTile.hypoPiece.getCaptured(false);
             }
             else if(current.bestTile == current.bestPiece.hypoTile)
             {
@@ -715,8 +715,8 @@ public class enemyManager : MonoBehaviour
         decideOrder[above.pieceIndex].capturing = null;
         if (above.capturedPiece != null)
         {
-            above.capturedPiece.placePiece(above.targetListCopy[above.tileIndex], false);
             above.capturedPiece.hypoAlive = true;
+            above.capturedPiece.placePiece(above.targetListCopy[above.tileIndex], false);
         }
         above.capturedPiece = null;
         restoreObjectiveHypoStatuses(above);
@@ -746,7 +746,7 @@ public class enemyManager : MonoBehaviour
             if (current.targetListCopy[current.tileIndex].hypoPiece != null)
             {
                 current.capturedPiece = current.targetListCopy[current.tileIndex].hypoPiece;
-                current.capturedPiece.hypoAlive = false;
+                current.capturedPiece.getCaptured(false);
             }
             decideOrder[current.pieceIndex].moveToTile(current.targetListCopy[current.tileIndex], false);
         }
