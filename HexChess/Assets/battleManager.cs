@@ -150,11 +150,7 @@ public class battleManager : MonoBehaviour
     {
         for (int i = 0; i<allTiles.Length; i++)
         {
-            allTiles[i].gameObject.GetComponent<SpriteRenderer>().color = allTiles[i].defaultColor;
-            if (allTiles[i].thisPiece != null && allTiles[i].thisPiece.exhausted)
-            {
-                allTiles[i].gameObject.GetComponent<SpriteRenderer>().color = allTiles[i].exhaustedColor;
-            }
+            allTiles[i].setColor();
         }
         if (selectedPiece != null && selectedPiece.alive)
         {

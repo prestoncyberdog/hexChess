@@ -36,7 +36,7 @@ public class enemyManager : MonoBehaviour
         groupSize = 3;//maximum recursive depth / max number of pieces considered at a time
         spawnDelayMax = 1f;//delay after each new piece placement
         endTurnDelayMax = 0.5f;//delay after last piece placement
-        frameMax = 0.1f;//longest frame allowed for thinking, is seconds, meant as a last resort
+        frameMax = 0.02f;//longest frame allowed for thinking, in seconds
         maxTurnStallTime = 2f;//max allowed total stalling time, after which group size will be reduced (repeatable within a turn)
 
         moveOrder = new List<piece>();
@@ -240,7 +240,9 @@ public class enemyManager : MonoBehaviour
                 //remove piece from hypo board
                 currentPiece.hypoAlive = false;
                 currentPiece.updateTargeting(false);
-                spawnTiles[i].updateTargeting(false);
+                List<piece> retargeted = new List<piece>();
+                retargeted.Add(currentPiece);
+                spawnTiles[i].updateTargeting(false, ref retargeted);
             }
             //place piece on hypo board
             currentPiece.hypoAlive = true;
@@ -504,110 +506,6 @@ public class enemyManager : MonoBehaviour
         }
     }
 
-    /*
-    //each piece must recieve an intention tile and the pieces will be ordered in moveOrder
-    public void decideActions()
-    {
-        moveOrder = new List<piece>();
-        orderPieces();
-        while (decideOrder.Count > 0)
-        {
-            //decideActionRecur(true);
-            decideActionsNonRecursive();
-            orderPieces();
-        }
-        decidePlacements();
-    }
-    
-    //chooses and adds 1 action to the moveOrder list, removes relevant piece from decideOrder
-    public float decideActionRecur(bool makeDecision)
-    {
-        float bestVal = -10000;
-        float newVal;
-        piece bestPiece = decideOrder[0];
-        tile bestTile = bestPiece.hypoTile;
-        piece capturedPiece = null;
-        tile previousTile = null;
-        tile[] hypoTargetCopy;
-
-        for (int i = 0; i < decideOrder.Count && i < groupSize; i++)
-        {
-            if (!decideOrder[i].hypoExhausted)
-            {
-                //first, consider not moving
-                decideOrder[i].hypoExhausted = true;
-                newVal = decideActionRecur(false);//recurse, but don't allow recursions to make decisions
-                if (newVal > bestVal)
-                {
-                    bestVal = newVal;
-                    bestPiece = decideOrder[i];
-                    bestTile = decideOrder[i].hypoTile;
-                }
-                decideOrder[i].hypoExhausted = false;
-                //now, consider all possible moves
-                hypoTargetCopy = new tile[decideOrder[i].hypoTargets.Count];
-                decideOrder[i].hypoTargets.CopyTo(hypoTargetCopy);//use copy of this list so it won't change as we loop through it
-                for (int j = 0; j < hypoTargetCopy.Length; j++)
-                {
-                    if (decideOrder[i].isValidCandidate(hypoTargetCopy[j], false))
-                    {
-                        //make hypo move
-                        previousTile = decideOrder[i].hypoTile;
-                        storeObjectiveHypoStatuses();
-                        if (hypoTargetCopy[j].hypoPiece != null)
-                        {
-                            capturedPiece = hypoTargetCopy[j].hypoPiece;
-                            capturedPiece.hypoAlive = false;
-                        }
-                        decideOrder[i].moveToTile(hypoTargetCopy[j], false);
-
-                        //evaluate result of move
-                        newVal = decideActionRecur(false);//recurse, but don't allow recursions to make decisions
-                        if (newVal > bestVal)
-                        {
-                            bestVal = newVal;
-                            bestPiece = decideOrder[i];
-                            bestTile = hypoTargetCopy[j];
-                        }
-
-                        //undo hypo move
-                        decideOrder[i].moveToTile(previousTile, false);
-                        decideOrder[i].hypoExhausted = false;
-                        decideOrder[i].capturing = null;
-                        if (capturedPiece != null)
-                        {
-                            capturedPiece.placePiece(hypoTargetCopy[j], false);
-                            capturedPiece.hypoAlive = true;
-                        }
-                        capturedPiece = null;
-                        restoreObjectiveHypoStatuses();
-                    }
-                }
-            }
-        }
-
-        if (makeDecision)//only the top level of the recursion can make actual move plans
-        {
-
-            //update hypo board to include new move
-            if (bestTile.hypoPiece != null)
-            {
-                bestTile.hypoPiece.hypoAlive = false;
-            }
-            bestPiece.moveToTile(bestTile, false);
-
-            moveOrder.Add(bestPiece);
-            bestPiece.intention = bestTile;
-            decideOrder.Remove(bestPiece);
-        }
-
-        if (bestVal == -10000)//we did not manage to recurse on any other pieces
-        {
-            bestVal = evaluatePosition();
-        }
-        return bestVal;
-    }*/
-
     //each piece must recieve an intention tile and the pieces will be ordered in moveOrder
     //this function is reworked to be not recursive so that it can be a coroutine and yield each frame
     public IEnumerator decideActions()
@@ -659,7 +557,7 @@ public class enemyManager : MonoBehaviour
                     goDownLevel(current);
                 }
                 //yield if we've spent too long thinking
-                if (Time.realtimeSinceStartup - lastYieldTime > Time.smoothDeltaTime || Time.realtimeSinceStartup - lastYieldTime > frameMax)
+                if (Time.realtimeSinceStartup - lastYieldTime > frameMax)
                 {
                     lastYieldTime = Time.realtimeSinceStartup;
                     yield return null;

@@ -10,11 +10,14 @@ public class tile : MonoBehaviour
     public Color defaultColor;
     public Color candidateColor;
     public Color selectedColor;
-    public Color exhaustedColor;
-
+    public Color playerColor;
+    public Color exhaustedPlayerColor;
+    public Color enemyColor;
+    public Color exhaustedEnemyColor;
     public tile[] neighbors;
     public float scale;
     public int distance;
+    public tile previousTile;
 
     public List<piece> targetedBy;//stores all pieces targeting tile
     public piece thisPiece;
@@ -39,7 +42,11 @@ public class tile : MonoBehaviour
         defaultColor = new Color(0.8f, 0.8f, 0.8f);
         candidateColor = new Color(0.8f, 0.8f, 0.6f);
         selectedColor = new Color(0.8f, 0.8f, 0.4f);
-        exhaustedColor = new Color(0.7f, 0.7f, 0.7f);
+        playerColor = new Color(0.8f, 0.8f, 1f);
+        exhaustedPlayerColor = new Color(0.6f, 0.6f, .8f);
+        enemyColor = new Color(1f, 0.8f, 0.8f);
+        exhaustedEnemyColor = new Color(.8f, 0.6f, 0.6f);
+
         this.GetComponent<SpriteRenderer>().color = defaultColor;
         transform.Rotate(new Vector3(0, 0, 30));
         distance = 1000;
@@ -109,7 +116,7 @@ public class tile : MonoBehaviour
     }
 
     //updates targeting for each piece in targetedBy list
-    public void updateTargeting(bool real)
+    public void updateTargeting(bool real, ref List<piece> retargeted)
     {
         piece[] oldPieces; 
         if (real)
@@ -125,8 +132,9 @@ public class tile : MonoBehaviour
 
         for (int i = 0;i<oldPieces.Length;i++)
         {
-            if (oldPieces[i].moveType != piece.JUMP && oldPieces[i].moveRange > 1)//jump or single move targeting is unaffected
+            if (oldPieces[i].moveType != piece.JUMP && oldPieces[i].moveRange > 1 && !retargeted.Contains(oldPieces[i]))//jump or single move targeting is unaffected
             {
+                retargeted.Add(oldPieces[i]);
                 oldPieces[i].updateTargeting(real);
             }
         }
@@ -163,6 +171,27 @@ public class tile : MonoBehaviour
             {
                 objectives[i].checkStatus(real);
             }
+        }
+    }
+
+    public void setColor()
+    {
+        gameObject.GetComponent<SpriteRenderer>().color = defaultColor;
+        if (thisPiece != null && thisPiece.team == 0 && !thisPiece.exhausted)
+        {
+            gameObject.GetComponent<SpriteRenderer>().color = playerColor;
+        }
+        else if (thisPiece != null && thisPiece.team == 1 && !thisPiece.exhausted)
+        {
+            gameObject.GetComponent<SpriteRenderer>().color = enemyColor;
+        }
+        else if (thisPiece != null && thisPiece.team == 0 && thisPiece.exhausted)
+        {
+            gameObject.GetComponent<SpriteRenderer>().color = exhaustedPlayerColor;
+        }
+        else if (thisPiece != null && thisPiece.team == 1 && thisPiece.exhausted)
+        {
+            gameObject.GetComponent<SpriteRenderer>().color = exhaustedEnemyColor;
         }
     }
 

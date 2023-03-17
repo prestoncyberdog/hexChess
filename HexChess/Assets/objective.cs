@@ -24,7 +24,8 @@ public class objective : MonoBehaviour
         enemyColor = new Color(1f, 0.2f, 0.2f);
         neutralColor = new Color(1f, 0.4f, 1f);
 
-        transform.localScale = new Vector3(bm.generator.tileScale * 0.5f, bm.generator.tileScale * 0.5f, 1);
+        transform.localScale = new Vector3(bm.generator.tileScale * 0.9f, bm.generator.tileScale * 0.9f, 1);
+        transform.Rotate(new Vector3(0, 0, 30));
 
         hypoTeam = team;
         setColor();

@@ -47,6 +47,9 @@ TagManager:
   - name: tile
     uniqueID: 2712291725
     locked: 0
+  - name: objective
+    uniqueID: 814321535
+    locked: 0
   - name: piece
     uniqueID: 1179710421
     locked: 0

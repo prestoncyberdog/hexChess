@@ -11,6 +11,8 @@ public class mapGenerator : MonoBehaviour
     public float tileScale;
     public int mapRadius;
 
+    public tile[] objectiveLocations;
+
     public void init()
     {
         gm = GameObject.FindGameObjectWithTag("gameManager").GetComponent<gameManager>();
@@ -20,7 +22,7 @@ public class mapGenerator : MonoBehaviour
         mapRadius = 7;
         tileScale = 0.15f;
         spawnMap();//spawns tiles, not obstacles
-        spawnObjectives();
+        spawnObjectives(5);
         linkTilesToObjectives();//to be done only after map fully determined
     }
 
@@ -29,33 +31,92 @@ public class mapGenerator : MonoBehaviour
         
     }
 
-    public void spawnObjectives()
+    public void spawnObjectives(int numObjectives)
     {
-        bm.allObjectives = new objective[5];
-        for (int i = 0;i<bm.allObjectives.Length;i++)
+        bm.allObjectives = new objective[numObjectives];
+        for (int i = 0;i< numObjectives; i++)
         {
-            tile place = bm.allTiles[Random.Range(0, bm.allTiles.Length)];
-            if (place.thisObjective == null)
+            objective newObjective = Instantiate(gm.Objective, gm.AWAY, Quaternion.identity).GetComponent<objective>();
+            bm.allObjectives[i] = newObjective;
+            if (i == 0 || i == 1)
             {
-                objective newObjective = Instantiate(gm.Objective, place.transform.position, Quaternion.identity).GetComponent<objective>();
-                newObjective.thisTile = place;
-                place.thisObjective = newObjective;
-                if (i == 0 || i == 1)
-                {
-                    newObjective.team = i;
-                }
-                else
-                {
-                    newObjective.team = -1;
-                }
-                newObjective.init();
-                bm.allObjectives[i] = newObjective;
+                newObjective.team = i;
             }
             else
             {
-                i--;
+                newObjective.team = -1;
+            }
+            newObjective.init();
+        }
+        chooseRandomObjectiveLocations(numObjectives);
+    }
+
+    public void chooseRandomObjectiveLocations(int numObjectives)
+    {
+        do
+        {
+            objectiveLocations = new tile[numObjectives];
+            for (int i = 0; i < numObjectives; i++)
+            {
+                tile place = bm.allTiles[Random.Range(0, bm.allTiles.Length)];
+                if (isValidObjectiveLocation(place))
+                {
+                    objective newObjective = bm.allObjectives[i];
+                    newObjective.thisTile = place;
+                    newObjective.transform.position = place.transform.position;
+                    place.thisObjective = newObjective;
+                }
+                else
+                {
+                    i--;
+                }
+            }
+        } while (findDistFromPlayerToEnemy() < (mapRadius - 3) * 2);
+    }
+
+    public bool isValidObjectiveLocation(tile potentialTile)
+    {
+        if (potentialTile.thisObjective != null)
+        {
+            return false;
+        }
+        for (int i = 0;i<potentialTile.neighbors.Length;i++)
+        {
+            if (potentialTile.neighbors[i] == null || potentialTile.neighbors[i].thisObjective != null)
+            {
+                return false;
             }
         }
+        return true;
+    }
+
+    public int findDistFromPlayerToEnemy()
+    {
+        tile activeTile;
+        tile otherTile;
+        Queue q = new Queue();
+        bm.resetTiles();
+        activeTile = bm.allObjectives[0].thisTile;
+        q.Enqueue(activeTile);
+        activeTile.distance = 0;
+        while (q.Count > 0)
+        {
+            activeTile = (tile)q.Dequeue();
+            if (activeTile == bm.allObjectives[1].thisTile)
+            {
+                return activeTile.distance;
+            }
+            for (int j = 0; j < activeTile.neighbors.Length; j++)
+            {
+                if (activeTile.neighbors[j] != null && activeTile.neighbors[j].distance > activeTile.distance + 1)
+                {
+                    otherTile = activeTile.neighbors[j];
+                    q.Enqueue(otherTile);
+                    otherTile.distance = activeTile.distance + 1;
+                }
+            }
+        }
+        return -1;
     }
 
     public void linkTilesToObjectives()

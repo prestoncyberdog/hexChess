@@ -68,10 +68,10 @@ SpriteRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
-  m_SortingLayerID: 1179710421
+  m_SortingLayerID: 814321535
   m_SortingLayer: 2
   m_SortingOrder: 0
-  m_Sprite: {fileID: 21300000, guid: f67a17daa1f0e0a49962b281700401d6, type: 3}
+  m_Sprite: {fileID: 21300000, guid: d2b8d3e4da1dd784ea84a430a4f18b25, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -94,3 +94,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a7525aa80ece8b84fb4a57929e8301d3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  gm: {fileID: 0}
+  bm: {fileID: 0}
+  team: 0
+  hypoTeam: 0
+  thisTile: {fileID: 0}
+  playerColor: {r: 0, g: 0, b: 0, a: 0}
+  enemyColor: {r: 0, g: 0, b: 0, a: 0}
+  neutralColor: {r: 0, g: 0, b: 0, a: 0}

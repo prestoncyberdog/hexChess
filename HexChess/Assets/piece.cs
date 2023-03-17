@@ -36,20 +36,22 @@ public class piece : MonoBehaviour
     public teamSlot thisSlot;
 
     public tile newTile;
+    public tile oldTile;
     public tile turnStartTile;
     public float moveRate;
     public piece capturing;
     public bool notMoving;
+    public List<tile> stepPath;
 
     public void init()
     {
         gm = GameObject.FindGameObjectWithTag("gameManager").GetComponent<gameManager>();
         bm = gm.bm;
-        moveRate = 2 * (2f - team);
+        moveRate = 10 * (2f - team);
         playerColor = new Color(0.2f, 0.2f, 1f);
-        exhaustedPlayerColor = new Color(0.4f, 0.4f, 1f);
+        exhaustedPlayerColor = playerColor;// new Color(0.4f, 0.4f, 1f);
         enemyColor = new Color(1f, 0.2f, 0.2f);
-        exhaustedEnemyColor = new Color(1f, 0.4f, 0.4f);
+        exhaustedEnemyColor = enemyColor;// new Color(1f, 0.4f, 0.4f);
 
         cost = 1;
         exhausted = false;
@@ -98,7 +100,9 @@ public class piece : MonoBehaviour
             hypoTile.hypoPiece = this;
         }
         updateTargeting(real);
-        targetTile.updateTargeting(real);
+        List<piece> retargeted = new List<piece>();
+        retargeted.Add(this);
+        targetTile.updateTargeting(real, ref retargeted);
         targetTile.checkNearbyObjectives(real);
         bm.resetHighlighting();
     }
@@ -106,19 +110,22 @@ public class piece : MonoBehaviour
     //begins moving to new tile, updates location and targeting info
     public void moveToTile(tile targetTile, bool real)
     {
-        tile oldTile;
+        tile possibleOldTile;
         if (real)
         {
             if (targetTile.thisPiece != null && targetTile.thisPiece != this)
             {
                 capturing = targetTile.thisPiece;
             }
-            oldTile = thisTile;
+            possibleOldTile = thisTile;
+            oldTile = possibleOldTile;
             exhausted = true;
-            oldTile.thisPiece = null;
+            possibleOldTile.thisPiece = null;
+            possibleOldTile.setColor();
             newTile = targetTile;
             thisTile = targetTile;
             thisTile.thisPiece = this;
+            thisTile.setColor();
         }
         else //here its a move on the hypo board
         {
@@ -126,24 +133,29 @@ public class piece : MonoBehaviour
             {
                 capturing = targetTile.hypoPiece;
             }
-            oldTile = hypoTile;
+            possibleOldTile = hypoTile;
             hypoExhausted = true;
-            oldTile.hypoPiece = null;
+            possibleOldTile.hypoPiece = null;
             hypoTile = targetTile;
             hypoTile.hypoPiece = this;
+            possibleOldTile.checkNearbyObjectives(real);
+            targetTile.checkNearbyObjectives(real);
         }
         updateTargeting(real);
-        oldTile.updateTargeting(real);
-        targetTile.updateTargeting(real);
-        oldTile.checkNearbyObjectives(real);
-        targetTile.checkNearbyObjectives(real);
+        List<piece> retargeted = new List<piece>();
+        retargeted.Add(this);
+        possibleOldTile.updateTargeting(real, ref retargeted);
+        targetTile.updateTargeting(real, ref retargeted);
     }
 
     //take care of delayed effects of move like coloring, capturing, and sound effects
     public void arriveOnTile()
     {
         transform.position = newTile.transform.position;
+        newTile.checkNearbyObjectives(true);
+        oldTile.checkNearbyObjectives(true);
         newTile = null;
+        oldTile = null;
         setColor();
         if (capturing != null)
         {
@@ -156,12 +168,21 @@ public class piece : MonoBehaviour
     public IEnumerator moveTowardsNewTile()
     {
         bm.movingPiece = this;
-        while (newTile != null)
+        stepPath = new List<tile>();
+        if (moveType == JUMP || moveType == LINE)
         {
-            Vector3 toNextTile = newTile.transform.position - transform.position;
+            stepPath.Add(newTile);
+        }
+        else
+        {
+            findStepPath(newTile);
+        }
+        while (stepPath.Count > 0)
+        {
+            Vector3 toNextTile = stepPath[0].transform.position - transform.position;
             if (moveRate * Time.deltaTime > toNextTile.magnitude)//here, we've arrived
             {
-                arriveOnTile();
+                stepPath.RemoveAt(0);
             }
             else
             {
@@ -169,6 +190,7 @@ public class piece : MonoBehaviour
             }
             yield return null;
         }
+        arriveOnTile();
         bm.movingPiece = null;
     }
 
@@ -333,8 +355,6 @@ public class piece : MonoBehaviour
         }
     }
 
-
-
     //breadth first search of tiles not recursing on unavailable tiles
     private void planPathsWithObtacles(bool real)
     {
@@ -476,6 +496,50 @@ public class piece : MonoBehaviour
                 }
             }
             continueSearch = true;
+        }
+    }
+
+    //breadth first search of tiles not recursing on unavailable tiles
+    private void findStepPath(tile targetTile)
+    {
+        for (int i = 0; i < bm.allTiles.Length; i++)
+        {
+            bm.allTiles[i].previousTile = null;
+            bm.allTiles[i].distance = 1000;
+        }
+        Queue q = new Queue();
+        tile activeTile = oldTile;
+        tile otherTile;
+        q.Enqueue(activeTile);
+        activeTile.distance = 0;
+        while (q.Count > 0)
+        {
+            activeTile = (tile)q.Dequeue();
+            if (activeTile == targetTile)  // here, we have found the path to our target
+            {
+                while (activeTile.previousTile != null)
+                {
+                    stepPath.Insert(0,activeTile);
+                    activeTile = activeTile.previousTile;
+                }
+                return;
+            }
+            for (int i = 0; i < activeTile.neighbors.Length; i++)
+            {
+                if (activeTile.neighbors[i] != null)
+                {
+                    otherTile = activeTile.neighbors[i];
+                    if (activeTile.distance < moveRange &&
+                        otherTile.distance > activeTile.distance + 1 &&
+                        otherTile.thisObjective == null &&
+                        (activeTile == oldTile || activeTile.thisPiece == null))
+                    {
+                        q.Enqueue(otherTile);
+                        otherTile.distance = activeTile.distance + 1;
+                        otherTile.previousTile = activeTile;
+                    }
+                }
+            }
         }
     }
 }
