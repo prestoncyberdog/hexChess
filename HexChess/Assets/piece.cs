@@ -47,7 +47,7 @@ public class piece : MonoBehaviour
     {
         gm = GameObject.FindGameObjectWithTag("gameManager").GetComponent<gameManager>();
         bm = gm.bm;
-        moveRate = 10 * (2f - team);
+        moveRate = 2 * (2f - team);
         playerColor = new Color(0.2f, 0.2f, 1f);
         exhaustedPlayerColor = playerColor;// new Color(0.4f, 0.4f, 1f);
         enemyColor = new Color(1f, 0.2f, 0.2f);
@@ -92,6 +92,11 @@ public class piece : MonoBehaviour
             newTile = targetTile;
             thisTile = targetTile;
             thisTile.thisPiece = this;
+            if (thisSlot != null)
+            {
+                thisSlot.thisPiece = null;
+                thisSlot = null;
+            }
         }
         else //here its a move on the hypo board
         {
@@ -261,12 +266,14 @@ public class piece : MonoBehaviour
             if (team == 0)
             {
                 bm.em.playerPieces.Remove(this);
+                cost = Mathf.Min(cost * 2, 999);
+                moveToSlot(bm.um.findOpenSlot());
             }
             if (team == 1)
             {
                 bm.em.enemyPieces.Remove(this);
+                Destroy(gameObject);
             }
-            Destroy(gameObject);
         }
         else
         {
@@ -278,15 +285,19 @@ public class piece : MonoBehaviour
     //moves piece to other slot, swapping if it was occupied
     public void moveToSlot(teamSlot newSlot)
     {
-        teamSlot oldSlot = thisSlot;
-        oldSlot.thisPiece = newSlot.thisPiece;
-        if (newSlot.thisPiece != null)
+        if (thisSlot != null)
         {
-            newSlot.thisPiece.thisSlot = oldSlot;
-            newSlot.thisPiece.transform.position = oldSlot.transform.position;
+            teamSlot oldSlot = thisSlot;
+            oldSlot.thisPiece = newSlot.thisPiece;
+            if (newSlot.thisPiece != null)
+            {
+                newSlot.thisPiece.thisSlot = oldSlot;
+                newSlot.thisPiece.transform.position = oldSlot.transform.position;
+            }
         }
         thisSlot = newSlot;
         newSlot.thisPiece = this;
+        transform.position = newSlot.transform.position;
     }
 
     public void setColor()

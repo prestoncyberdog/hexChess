@@ -79,6 +79,18 @@ public class uiManager : MonoBehaviour
         resetHighlighting();
     }
 
+    public teamSlot findOpenSlot()
+    {
+        for (int i = 0;i<teamlist.Length;i++)
+        {
+            if (teamlist[i].thisPiece == null)
+            {
+                return teamlist[i];
+            }
+        }
+        return null;
+    }
+
     public void createText()
     {
         energy = new GameObject("energy");

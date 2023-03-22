@@ -49,6 +49,11 @@ public class battleManager : MonoBehaviour
             em.takeTurn();
         }
 
+        if (Input.GetKeyDown(KeyCode.R))
+        {
+            gm.loadMap();
+        }
+
         if (Input.GetMouseButtonDown(0) && !justClicked)
         {
             selectedPiece = null;

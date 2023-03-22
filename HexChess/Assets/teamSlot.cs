@@ -117,7 +117,7 @@ public class teamSlot : MonoBehaviour
     public void updateText()
     {
         Camera c = Camera.main;
-        costPos = c.WorldToScreenPoint((transform.position + new Vector3(-0.32f, -0.32f, 0)));
+        costPos = c.WorldToScreenPoint((transform.position + new Vector3(-0.24f, -0.32f, 0)));
         costText.rectTransform.anchoredPosition = costPos;
         costText.fontSize = Mathf.FloorToInt(20 * (AspectUtility.screenWidth / 1612f));
         setText();

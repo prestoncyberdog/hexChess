@@ -53,15 +53,18 @@ public class mapGenerator : MonoBehaviour
 
     public void chooseRandomObjectiveLocations(int numObjectives)
     {
+        objective newObjective;
+        int tries = 0;
         do
         {
+            resetMap();
             objectiveLocations = new tile[numObjectives];
             for (int i = 0; i < numObjectives; i++)
             {
                 tile place = bm.allTiles[Random.Range(0, bm.allTiles.Length)];
                 if (isValidObjectiveLocation(place))
                 {
-                    objective newObjective = bm.allObjectives[i];
+                    newObjective = bm.allObjectives[i];
                     newObjective.thisTile = place;
                     newObjective.transform.position = place.transform.position;
                     place.thisObjective = newObjective;
@@ -71,7 +74,26 @@ public class mapGenerator : MonoBehaviour
                     i--;
                 }
             }
-        } while (findDistFromPlayerToEnemy() < (mapRadius - 3) * 2);
+            tries++;
+        } while (!isValidMap() && tries < 100);
+        if (!isValidMap())
+        {
+            gm.loadMap();
+        }
+    }
+
+    public bool isValidMap()
+    {
+        return findDistFromPlayerToEnemy() >= (mapRadius - 3) * 2;
+    }
+
+    //manually reset valiues in tile grid to allow rerandomization
+    public void resetMap()
+    {
+        for (int i = 0;i<bm.allTiles.Length;i++)
+        {
+            bm.allTiles[i].thisObjective = null;
+        }
     }
 
     public bool isValidObjectiveLocation(tile potentialTile)

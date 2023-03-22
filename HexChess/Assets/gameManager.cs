@@ -40,4 +40,9 @@ public class gameManager : MonoBehaviour
     {
         
     }
+
+    public void loadMap()
+    {
+        SceneManager.LoadScene("gameBoard");
+    }
 }
