@@ -56,10 +56,15 @@ MonoBehaviour:
     type: 3}
   TeamSlot: {fileID: 8654493638357390715, guid: 946ce31da8caa5d478d643d424a9354b,
     type: 3}
-  Objective: {fileID: 7360054657389047111, guid: 6fab1348a23d55d42b615290f04c8467,
-    type: 3}
   MapGenerator: {fileID: 3115216862522796252, guid: efde9775353663047925b8de72dcaa32,
+    type: 3}
+  ChampionMarker: {fileID: 7988939371949712617, guid: 11fd5b33db0fdd44ba632b2d1d487a41,
+    type: 3}
+  HealthBar: {fileID: 3799581174672644548, guid: 55e3a9246e11bbb4398c32c5e5588174,
+    type: 3}
+  HealthBarPip: {fileID: 311275622870036768, guid: d848dfee0b81d2947b4bcd12fe147241,
     type: 3}
   bm: {fileID: 0}
   playerPieces: []
+  champions: []
   AWAY: {x: 0, y: 0, z: 0}

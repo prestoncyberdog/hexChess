@@ -39,6 +39,7 @@ public class enemyManager : MonoBehaviour
         frameMax = 0.02f;//longest frame allowed for thinking, in seconds
         maxTurnStallTime = 2f;//max allowed total stalling time, after which group size will be reduced (repeatable within a turn)
 
+        createChampion();
         moveOrder = new List<piece>();
 
         spawnPlan = new List<piece>();
@@ -64,7 +65,7 @@ public class enemyManager : MonoBehaviour
     public float evaluatePosition()
     {
         //these values can balance how much the ai values different measures
-        float objectiveWeight = 10;
+        float objectiveWeight = 0;//10;
         float pieceWeight = 1;
         float targetingWeight = 0.8f;
         float positionWeight = 0.2f;
@@ -82,7 +83,8 @@ public class enemyManager : MonoBehaviour
     //adds up number of objectives for each player and considers the difference
     public float calculateObjectiveScore(float objectiveWeight)
     {
-        float objectiveScore = 0;
+        return 0;
+        /*float objectiveScore = 0;
         int playerObjectives = 0;
         int enemyObjectives = 0;
         for (int i = 0; i < bm.allObjectives.Length; i++)
@@ -102,7 +104,7 @@ public class enemyManager : MonoBehaviour
             objectiveScore = 10000;//here, the ai has won
         }
         objectiveScore += (enemyObjectives - playerObjectives) * objectiveWeight;
-        return objectiveScore;
+        return objectiveScore;*/
     }
 
     //adds up all living piece values for each player and considers the difference
@@ -169,6 +171,8 @@ public class enemyManager : MonoBehaviour
     //assumes findAllPieces has already been called
     public float calculatePositionScore(float positionWeight, float notMovingPenalty)
     {
+        return 0;
+        /*
         float positionScore = 0;
         float minDist = 1000;
         tile currentTile;
@@ -189,7 +193,7 @@ public class enemyManager : MonoBehaviour
                 positionScore -= notMovingPenalty;
             }
         }
-        return positionScore * positionWeight;
+        return positionScore * positionWeight;*/
     }
 
     //decide which pieces to place and setting their intentions, using hypo board after other moves are done
@@ -262,7 +266,7 @@ public class enemyManager : MonoBehaviour
     public void orderPieces()
     {
         decideOrder = new List<piece>();
-        float minDist = 1000;
+        //float minDist;
         piece firstPiece = null;
         tile currentTile;
         //find piece that can move which is closest to useful objective
@@ -275,14 +279,14 @@ public class enemyManager : MonoBehaviour
                     firstPiece = enemyPieces[i];//will only be relevant if there are no useful objectives, in which case any piece is fine
                 }
                 currentTile = enemyPieces[i].hypoTile;
-                for (int j = 0; j < currentTile.objectiveDists.Length; j++)
+                /*for (int j = 0; j < currentTile.objectiveDists.Length; j++)
                 {
                     if (currentTile.objectives[j].hypoTeam != 1 && currentTile.objectiveDists[j] < minDist)
                     {
                         minDist = currentTile.objectiveDists[j];
                         firstPiece = enemyPieces[i];
                     }
-                }
+                }*/
             }
         }
         if (firstPiece == null)//all pieces have made decisions
@@ -408,13 +412,9 @@ public class enemyManager : MonoBehaviour
             bm.allTiles[i].hypoTargetedBy = new List<piece>();
             copyPieceList(bm.allTiles[i].targetedBy, bm.allTiles[i].hypoTargetedBy);
         }
-        for (int i = 0; i < bm.allObjectives.Length; i++)
-        {
-            bm.allObjectives[i].hypoTeam = bm.allObjectives[i].team;
-        }
     }
 
-    public void storeObjectiveHypoStatuses(recursiveActionItem currentMove)
+   /* public void storeObjectiveHypoStatuses(recursiveActionItem currentMove)
     {
         currentMove.objectiveStatuses = new int[bm.allObjectives.Length];
         for (int i = 0; i< currentMove.objectiveStatuses.Length;i++)
@@ -429,7 +429,7 @@ public class enemyManager : MonoBehaviour
         {
             bm.allObjectives[i].hypoTeam = currentMove.objectiveStatuses[i];
         }
-    }
+    }*/
 
     //finds all living pieces on real board or hypo board
     //fills playersPieces and enemyPieces regardless, only fills bm.alivePieces when run on real board
@@ -491,13 +491,18 @@ public class enemyManager : MonoBehaviour
         }
     }
 
+    public void createChampion()
+    {
+        piece newPiece = Instantiate(gm.Pieces[Random.Range(0, gm.Pieces.Length)], new Vector3(1000, 1000, 0), Quaternion.identity).GetComponent<piece>();
+        newPiece.team = 1;
+        newPiece.init();
+        newPiece.champion = true;
+        gm.champions[1] = newPiece;
+    }
+
     public void prepareSpawns()
     {
-        if (spawnPlan.Count > bm.playsRemaining)
-        {
-            return;
-        }
-        for (int i = 0; i < 10; i++)
+        for (int i = spawnPlan.Count; i < 10; i++)
         {
             piece newPiece = Instantiate(gm.Pieces[Random.Range(0, gm.Pieces.Length)], new Vector3(1000, 1000, 0), Quaternion.identity).GetComponent<piece>();
             newPiece.team = 1;
@@ -615,9 +620,14 @@ public class enemyManager : MonoBehaviour
         {
             above.capturedPiece.hypoAlive = true;
             above.capturedPiece.placePiece(above.targetListCopy[above.tileIndex], false);
+            above.capturedPiece = null;
         }
-        above.capturedPiece = null;
-        restoreObjectiveHypoStatuses(above);
+        if (above.attackedPiece != null)
+        {
+            decideOrder[above.pieceIndex].unDealDamage(current.attackedPiece);
+            above.attackedPiece = null;
+        }
+        //restoreObjectiveHypoStatuses(above);
 
         //remove level from stack
         stack.RemoveAt(0);
@@ -628,7 +638,7 @@ public class enemyManager : MonoBehaviour
         if (current.tileIndex == -1)//piece not moving
         {
             //make hypo move
-            storeObjectiveHypoStatuses(current);
+            //storeObjectiveHypoStatuses(current);
             decideOrder[current.pieceIndex].hypoExhausted = true;
             current.previousTile = decideOrder[current.pieceIndex].hypoTile;
         }
@@ -639,12 +649,18 @@ public class enemyManager : MonoBehaviour
                 return;//not a valid move, do nothing
             }
             //make hypo move
-            storeObjectiveHypoStatuses(current);
+            //storeObjectiveHypoStatuses(current);
             current.previousTile = decideOrder[current.pieceIndex].hypoTile;
-            if (current.targetListCopy[current.tileIndex].hypoPiece != null)
+            if (current.targetListCopy[current.tileIndex].hypoPiece != null && 
+                current.targetListCopy[current.tileIndex].hypoPiece.willGetCaptured(decideOrder[current.pieceIndex], false))//here we are capturing a piece
             {
                 current.capturedPiece = current.targetListCopy[current.tileIndex].hypoPiece;
                 current.capturedPiece.getCaptured(false);
+            }
+            else if (current.targetListCopy[current.tileIndex].hypoPiece != null)//here, we are attacking but not capturing another piece
+            {
+                current.attackedPiece = current.targetListCopy[current.tileIndex].hypoPiece;
+                decideOrder[current.pieceIndex].dealDamage(current.attackedPiece, false);
             }
             decideOrder[current.pieceIndex].moveToTile(current.targetListCopy[current.tileIndex], false);
         }
@@ -666,6 +682,7 @@ public class recursiveActionItem
     public int tileIndex;
     public tile[] targetListCopy;
     public piece capturedPiece;
+    public piece attackedPiece;
     public tile previousTile;
-    public int[] objectiveStatuses;
+    //public int[] objectiveStatuses;
 }

@@ -22,13 +22,12 @@ public class tile : MonoBehaviour
     public List<piece> targetedBy;//stores all pieces targeting tile
     public piece thisPiece;
     public int obstacle;//may be object instead later
-    public objective thisObjective;
     public List<piece> hypoTargetedBy;
     public piece hypoPiece;
     public int hypoObstacle;
 
-    public objective[] objectives;
-    public int[] objectiveDists;
+    public int[] championDists;
+    public int[] hypoChampionDists;
 
 
     public void init(float tileScale)
@@ -144,34 +143,15 @@ public class tile : MonoBehaviour
     {
         if (real)
         {
-            return (obstacle == 0 && thisPiece == null && thisObjective == null && bm.playsRemaining > 0 && neighborsObjective(team, real));
+            return (obstacle == 0 && thisPiece == null && bm.playsRemaining > 0 && neighborsChampion(team, real));
         }
-        return (hypoObstacle == 0 && hypoPiece == null && thisObjective == null && bm.playsRemaining > 0 && neighborsObjective(team, real));
+        return (hypoObstacle == 0 && hypoPiece == null && bm.playsRemaining > 0 && neighborsChampion(team, real));
     }
 
-    public bool neighborsObjective(int team, bool real)//returns whether tile neighbors objective controlled by the given team
+    public bool neighborsChampion(int team, bool real)//returns whether the tile neighbors the proper champion
     {
-        for (int i = 0; i < objectives.Length; i++)
-        {
-            if (objectiveDists[i] == 1 && ((real && objectives[i].team == team) ||
-                                          (!real && objectives[i].hypoTeam == team)))
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    //updates nearby objectives if needed
-    public void checkNearbyObjectives(bool real)
-    {
-        for (int i = 0; i<objectives.Length;i++)
-        {
-            if (objectiveDists[i] == 1)
-            {
-                objectives[i].checkStatus(real);
-            }
-        }
+        return ((real && championDists[team] == 1) ||
+                (!real && hypoChampionDists[team] == 1));
     }
 
     public void setColor()

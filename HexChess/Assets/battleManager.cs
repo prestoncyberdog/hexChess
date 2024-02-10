@@ -12,7 +12,6 @@ public class battleManager : MonoBehaviour
 
     public tile[] allTiles;
     public List<piece> alivePieces;
-    public objective[] allObjectives;
 
     public piece selectedPiece;
     public bool holdingPiece;
@@ -30,11 +29,13 @@ public class battleManager : MonoBehaviour
         em = Instantiate(gm.EnemyManager, transform.position, Quaternion.identity).GetComponent<enemyManager>();
         um = Instantiate(gm.UIManager, transform.position, Quaternion.identity).GetComponent<uiManager>();
         generator = Instantiate(gm.MapGenerator, transform.position, Quaternion.identity).GetComponent<mapGenerator>();
-
+        
+        generator.setTileScale();
         alivePieces = new List<piece>();
-        generator.init();
+
         gm.createInitialTeam();//for testing only, team will exist once we have other scenes
         em.init();
+        generator.init();
         um.init();
         changeTurn(0);
 
@@ -88,28 +89,21 @@ public class battleManager : MonoBehaviour
     {
         em.unexhaustPieces();
         playersTurn = (whosTurn == 0);
-        giveObjectiveBonuses(whosTurn);
+        giveTurnBonuses(whosTurn);
         resetHighlighting();
     }
 
-    //awards plays and energy for each objective controlled
-    public void giveObjectiveBonuses(int currentPlayer)
+    //awards plays and energy each turn
+    public void giveTurnBonuses(int currentPlayer)
     {
-        playsRemaining = 0;
-        for (int i = 0;i<allObjectives.Length;i++)
+        playsRemaining = 1;
+        if (playersTurn)
         {
-            if (allObjectives[i].team == currentPlayer)
-            {
-                playsRemaining++;
-                if (allObjectives[i].team == 0 && playersTurn)
-                {
-                    playerEnergy += 10;
-                }
-                else if (allObjectives[i].team == 1 && !playersTurn)
-                {
-                    enemyEnergy += 10;
-                }
-            }
+            playerEnergy += 10;
+        }
+        else if (!playersTurn)
+        {
+            enemyEnergy += 10;
         }
     }
 
@@ -170,10 +164,6 @@ public class battleManager : MonoBehaviour
                     allTiles[i].gameObject.GetComponent<SpriteRenderer>().color = allTiles[i].candidateColor;
                 }
             }
-        }
-        for (int i = 0;i<allObjectives.Length;i++)
-        {
-            allObjectives[i].setColor();
         }
         um.resetHighlighting();
     }

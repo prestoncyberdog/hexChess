@@ -47,6 +47,9 @@ TagManager:
   - name: tile
     uniqueID: 2712291725
     locked: 0
+  - name: tile decoration
+    uniqueID: 2004642803
+    locked: 0
   - name: objective
     uniqueID: 814321535
     locked: 0

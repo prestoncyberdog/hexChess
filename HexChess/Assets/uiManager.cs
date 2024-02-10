@@ -43,10 +43,10 @@ public class uiManager : MonoBehaviour
 
     public void createTeamSlots()
     {
-        teamlist = new teamSlot[20];
+        teamlist = new teamSlot[12];
         float listSpacing = 1.3f;
         float listSpacingVert = 1.3f;
-        int rowLength = 4;
+        int rowLength = 3;
         Vector3 listOffset = new Vector3(-5.5f - listSpacing*(rowLength-1)*.5f, listSpacingVert * 2, 0);
         Vector3 currentPos = transform.position + listOffset;
         //we create a grid of buttons

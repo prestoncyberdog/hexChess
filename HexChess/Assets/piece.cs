@@ -22,6 +22,7 @@ public class piece : MonoBehaviour
     public int cost;
     public float qualityBonus;
     public int team;
+    public bool champion;
     public tile intention;//used by AI
 
     public tile thisTile;
@@ -33,6 +34,11 @@ public class piece : MonoBehaviour
     public bool hypoAlive;
     public List<tile> hypoTargets;
 
+    public int health;
+    public int damage;
+    public int hypoHealth;
+    public healthBar thisHealthBar;
+
     public teamSlot thisSlot;
 
     public tile newTile;
@@ -40,6 +46,7 @@ public class piece : MonoBehaviour
     public tile turnStartTile;
     public float moveRate;
     public piece capturing;
+    public piece attacking;
     public bool notMoving;
     public List<tile> stepPath;
 
@@ -47,13 +54,16 @@ public class piece : MonoBehaviour
     {
         gm = GameObject.FindGameObjectWithTag("gameManager").GetComponent<gameManager>();
         bm = gm.bm;
-        moveRate = 2 * (2f - team);
+        moveRate = 5 * (2f - team);
         playerColor = new Color(0.2f, 0.2f, 1f);
         exhaustedPlayerColor = playerColor;// new Color(0.4f, 0.4f, 1f);
         enemyColor = new Color(1f, 0.2f, 0.2f);
         exhaustedEnemyColor = enemyColor;// new Color(1f, 0.4f, 0.4f);
 
         cost = 1;
+        health = 5;
+        damage = 3;
+        champion = false;
         exhausted = false;
         if (thisTile != null)
         {
@@ -97,6 +107,11 @@ public class piece : MonoBehaviour
                 thisSlot.thisPiece = null;
                 thisSlot = null;
             }
+            if (thisHealthBar == null)
+            {
+                thisHealthBar = Instantiate(gm.HealthBar, gm.AWAY, Quaternion.identity).GetComponent<healthBar>();
+                thisHealthBar.owner = this;
+            }
         }
         else //here its a move on the hypo board
         {
@@ -108,7 +123,6 @@ public class piece : MonoBehaviour
         List<piece> retargeted = new List<piece>();
         retargeted.Add(this);
         targetTile.updateTargeting(real, ref retargeted);
-        targetTile.checkNearbyObjectives(real);
         bm.resetHighlighting();
     }
 
@@ -118,7 +132,13 @@ public class piece : MonoBehaviour
         tile possibleOldTile;
         if (real)
         {
-            if (targetTile.thisPiece != null && targetTile.thisPiece != this)
+            if (targetTile.thisPiece != null && targetTile.thisPiece != this && !targetTile.thisPiece.willGetCaptured(this, real))
+            {
+                //here, we will deal damage but not capture, so our resulting tile will not be the original target tile
+                attacking = targetTile.thisPiece;
+                targetTile = findEndingTile(attacking, real);//thisTile;//to be replaced
+            }
+            else if (targetTile.thisPiece != null && targetTile.thisPiece != this)
             {
                 capturing = targetTile.thisPiece;
             }
@@ -134,17 +154,26 @@ public class piece : MonoBehaviour
         }
         else //here its a move on the hypo board
         {
-            if (targetTile.hypoPiece != null && targetTile.hypoPiece != this)
+            if (targetTile.hypoPiece != null && targetTile.hypoPiece != this && !targetTile.hypoPiece.willGetCaptured(this, real))
             {
-                capturing = targetTile.hypoPiece;
+                //here, we will deal damage but not capture, so our resulting tile will not be the original target tile
+                //attacking = targetTile.hypoPiece;
+                targetTile = findEndingTile(targetTile.hypoPiece, real);//hypoTile;//to be replaced
+                //enemy manager should handle the hypothetical damage and capturing
+            }
+            else if (targetTile.hypoPiece != null && targetTile.hypoPiece != this)
+            {
+                //capturing = targetTile.hypoPiece;
             }
             possibleOldTile = hypoTile;
             hypoExhausted = true;
             possibleOldTile.hypoPiece = null;
             hypoTile = targetTile;
             hypoTile.hypoPiece = this;
-            possibleOldTile.checkNearbyObjectives(real);
-            targetTile.checkNearbyObjectives(real);
+        }
+        if (champion)
+        {
+            bm.generator.findDistsToChampions(real);
         }
         updateTargeting(real);
         List<piece> retargeted = new List<piece>();
@@ -153,27 +182,15 @@ public class piece : MonoBehaviour
         targetTile.updateTargeting(real, ref retargeted);
     }
 
-    //take care of delayed effects of move like coloring, capturing, and sound effects
-    public void arriveOnTile()
-    {
-        transform.position = newTile.transform.position;
-        newTile.checkNearbyObjectives(true);
-        oldTile.checkNearbyObjectives(true);
-        newTile = null;
-        oldTile = null;
-        setColor();
-        if (capturing != null)
-        {
-            capturing.getCaptured(true);
-            capturing = null;
-        }
-        bm.resetHighlighting();
-    }
-
+    //allows us to delay coloring changes, captures, and sound effects, our final location is already changed in moveToTile
     public IEnumerator moveTowardsNewTile()
     {
         bm.movingPiece = this;
         stepPath = new List<tile>();
+        if (attacking != null)
+        {
+            stepPath.Add(attacking.thisTile);
+        }
         if (moveType == JUMP || moveType == LINE)
         {
             stepPath.Add(newTile);
@@ -187,16 +204,91 @@ public class piece : MonoBehaviour
             Vector3 toNextTile = stepPath[0].transform.position - transform.position;
             if (moveRate * Time.deltaTime > toNextTile.magnitude)//here, we've arrived
             {
+                if (attacking != null && stepPath[0] == attacking.thisTile)
+                {
+                    dealDamage(attacking, true);
+                    attacking = null;
+                }
                 stepPath.RemoveAt(0);
             }
             else
             {
                 transform.position = transform.position + toNextTile.normalized * moveRate * Time.deltaTime;
+                thisHealthBar.setPositions();
             }
             yield return null;
         }
         arriveOnTile();
         bm.movingPiece = null;
+    }
+
+    //take care of delayed effects of move like coloring, capturing, and sound effects. Damage/capturing happens here
+    public void arriveOnTile()
+    {
+        transform.position = newTile.transform.position;
+        newTile = null;
+        oldTile = null;
+        setColor();
+        if (capturing != null)
+        {
+            capturing.getCaptured(true);
+            capturing = null;
+        }
+        bm.resetHighlighting();
+        thisHealthBar.setPositions();
+    }
+
+    //finds the tile we'd end up on if we attacked target
+    public tile findEndingTile(piece target, bool real)
+    {
+        tile startTile = thisTile;
+        if (!real)
+        {
+            startTile = hypoTile;
+        }
+        if (moveType != LINE)
+        {
+            return startTile;
+        }
+        for (int i = 0;i < 6;i++)
+        {
+            if (target.isInDirection(this, i, real))
+            {
+                if (real)
+                {
+                    return target.thisTile.neighbors[i];
+                }
+                else
+                {
+                    return target.hypoTile.neighbors[i];
+                }
+            }
+        }
+        return startTile;
+    }
+
+    public void dealDamage(piece target, bool real)
+    {
+        target.takeDamage(damage, real);
+    }
+
+    public void takeDamage(int amount, bool real)
+    {
+        if (real)
+        {
+            health -= amount;
+            thisHealthBar.setColors();
+        }
+        else
+        {
+            hypoHealth -= amount;
+        }
+    }
+
+    //this reverses our hypothetical attack
+    public void unDealDamage(piece target)
+    {
+        target.hypoHealth += damage;
     }
 
     public bool isValidCandidate(tile target, bool real)
@@ -205,16 +297,41 @@ public class piece : MonoBehaviour
         {
             return ((target.thisPiece == null || target.thisPiece.team != team) &&
                     target.obstacle == 0 &&
-                    target.thisObjective == null &&
                     exhausted == false);
         }
         else
         {
             return ((target.hypoPiece == null || target.hypoPiece.team != team) &&
                     target.hypoObstacle == 0 &&
-                    target.thisObjective == null &&
                     hypoExhausted == false);
         }
+    }
+
+    //returns whether an attack will capture this piece
+    public bool willGetCaptured(piece attacker, bool real)
+    {
+        return (( real && attacker.damage >= health) ||
+                (!real && attacker.damage >= hypoHealth));
+    }
+
+    //starts from this piece and looks in a direction for another piece, only looking along a straight line
+    public bool isInDirection(piece otherPiece, int dir, bool real)
+    {
+        tile currTile = thisTile;
+        if (!real)
+        {
+            currTile = hypoTile;
+        }
+        while (currTile.neighbors[dir] != null)
+        {
+            currTile = currTile.neighbors[dir];
+            if ((real && otherPiece.thisTile == currTile) ||
+                (!real && otherPiece.hypoTile == currTile))
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     public bool canAfford()
@@ -263,6 +380,7 @@ public class piece : MonoBehaviour
             alive = false;
             updateTargeting(real);//removes all targeting
             bm.alivePieces.Remove(this);
+            thisHealthBar.destroyAll();
             if (team == 0)
             {
                 bm.em.playerPieces.Remove(this);
@@ -271,6 +389,12 @@ public class piece : MonoBehaviour
             }
             if (team == 1)
             {
+                if (champion)//shouldnt matter once battle end is implemented
+                {
+                    thisTile.thisPiece = null;
+                    thisTile = null;
+                    bm.generator.findDistsToChampions(real);
+                }
                 bm.em.enemyPieces.Remove(this);
                 Destroy(gameObject);
             }
@@ -388,7 +512,6 @@ public class piece : MonoBehaviour
                     otherTile = activeTile.neighbors[i];
                     if (activeTile.distance < moveRange && 
                         otherTile.distance > activeTile.distance + 1 && 
-                        otherTile.thisObjective == null &&
                             ((real && (activeTile == thisTile || activeTile.thisPiece == null)) ||
                             (!real && (activeTile == hypoTile || activeTile.hypoPiece == null))))
                     {
@@ -438,8 +561,7 @@ public class piece : MonoBehaviour
                     {
                         q.Enqueue(otherTile);
                         otherTile.distance = activeTile.distance + 1;
-                        if (otherTile.distance == moveRange && otherTile.thisObjective == null && 
-                                                                ((real && !targets.Contains(otherTile)) ||
+                        if (otherTile.distance == moveRange && ((real && !targets.Contains(otherTile)) ||
                                                                 (!real && !hypoTargets.Contains(otherTile)))) // here, otherTile is a target we can maybe move to
                         {
                             if (real)
@@ -482,7 +604,6 @@ public class piece : MonoBehaviour
                     otherTile = activeTile.neighbors[i];
                     if (activeTile.distance < moveRange &&
                         otherTile.distance > activeTile.distance + 1 &&
-                        otherTile.thisObjective == null &&
                             ((real && (activeTile == thisTile || activeTile.thisPiece == null)) ||
                             (!real && (activeTile == hypoTile || activeTile.hypoPiece == null))))
                     {
@@ -542,7 +663,6 @@ public class piece : MonoBehaviour
                     otherTile = activeTile.neighbors[i];
                     if (activeTile.distance < moveRange &&
                         otherTile.distance > activeTile.distance + 1 &&
-                        otherTile.thisObjective == null &&
                         (activeTile == oldTile || activeTile.thisPiece == null))
                     {
                         q.Enqueue(otherTile);

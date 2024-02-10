@@ -10,12 +10,15 @@ public class gameManager : MonoBehaviour
     public Transform EnemyManager;
     public Transform UIManager;
     public Transform TeamSlot;
-    public Transform Objective;
     public Transform MapGenerator;
+    public Transform ChampionMarker;
+    public Transform HealthBar;
+    public Transform HealthBarPip;
 
     public battleManager bm;
 
     public List<piece> playerPieces;
+    public piece[] champions;
     public Vector3 AWAY;
 
     void Start()
@@ -26,14 +29,24 @@ public class gameManager : MonoBehaviour
 
     public void createInitialTeam()
     {
+        AWAY = new Vector3(1000, 1000, 0);
+        
         playerPieces = new List<piece>();
-        for (int i = 0; i < 11; i++)
+        piece newPiece;
+        for (int i = 0; i < 8; i++)
         {
-            piece newPiece = Instantiate(Pieces[Random.Range(0,Pieces.Length)], AWAY, Quaternion.identity).GetComponent<piece>();
+            newPiece = Instantiate(Pieces[Random.Range(0,Pieces.Length)], AWAY, Quaternion.identity).GetComponent<piece>();
             newPiece.team = 0;
             newPiece.init();
             playerPieces.Add(newPiece);
         }
+
+        champions = new piece[2];
+        newPiece = Instantiate(Pieces[1], AWAY, Quaternion.identity).GetComponent<piece>();
+        newPiece.team = 0;
+        newPiece.init();
+        newPiece.champion = true;
+        champions[0] = newPiece;
     }
 
     void Update()

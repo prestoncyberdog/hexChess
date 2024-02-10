@@ -12,6 +12,7 @@ public class mapGenerator : MonoBehaviour
     public int mapRadius;
 
     public tile[] objectiveLocations;
+    public piece[] championLocations;
 
     public void init()
     {
@@ -19,11 +20,15 @@ public class mapGenerator : MonoBehaviour
         bm = gm.bm;
 
         spacingFactor = 1.1f;
-        mapRadius = 7;
-        tileScale = 0.15f;
+        mapRadius = 3;
+        setTileScale();
         spawnMap();//spawns tiles, not obstacles
-        spawnObjectives(5);
-        linkTilesToObjectives();//to be done only after map fully determined
+        placeChampions();
+    }
+
+    public void setTileScale()
+    {
+        tileScale = 0.25f;
     }
 
     void Update()
@@ -31,43 +36,19 @@ public class mapGenerator : MonoBehaviour
         
     }
 
-    public void spawnObjectives(int numObjectives)
+    //randomly assigns tiles to each champion, making sure they are far enough apart
+    public void placeChampions()
     {
-        bm.allObjectives = new objective[numObjectives];
-        for (int i = 0;i< numObjectives; i++)
-        {
-            objective newObjective = Instantiate(gm.Objective, gm.AWAY, Quaternion.identity).GetComponent<objective>();
-            bm.allObjectives[i] = newObjective;
-            if (i == 0 || i == 1)
-            {
-                newObjective.team = i;
-            }
-            else
-            {
-                newObjective.team = -1;
-            }
-            newObjective.init();
-        }
-        chooseRandomObjectiveLocations(numObjectives);
-    }
-
-    public void chooseRandomObjectiveLocations(int numObjectives)
-    {
-        objective newObjective;
         int tries = 0;
         do
         {
             resetMap();
-            objectiveLocations = new tile[numObjectives];
-            for (int i = 0; i < numObjectives; i++)
+            for (int i = 0; i < 2; i++)
             {
                 tile place = bm.allTiles[Random.Range(0, bm.allTiles.Length)];
-                if (isValidObjectiveLocation(place))
+                if (place.thisPiece == null)
                 {
-                    newObjective = bm.allObjectives[i];
-                    newObjective.thisTile = place;
-                    newObjective.transform.position = place.transform.position;
-                    place.thisObjective = newObjective;
+                    gm.champions[i].thisTile = place;
                 }
                 else
                 {
@@ -80,11 +61,17 @@ public class mapGenerator : MonoBehaviour
         {
             gm.loadMap();
         }
+        for (int i = 0;i<2;i++)
+        {
+            bm.placeNewPiece(gm.champions[i],gm.champions[i].thisTile);
+        }
+        findDistsToChampions(true);
+        spawnChampionMarkers();
     }
 
     public bool isValidMap()
     {
-        return findDistFromPlayerToEnemy() >= (mapRadius - 3) * 2;
+        return findDistFromPlayerToEnemy() >= 3;//(mapRadius - 3) * 2;
     }
 
     //manually reset valiues in tile grid to allow rerandomization
@@ -92,24 +79,8 @@ public class mapGenerator : MonoBehaviour
     {
         for (int i = 0;i<bm.allTiles.Length;i++)
         {
-            bm.allTiles[i].thisObjective = null;
+            bm.allTiles[i].thisPiece = null;
         }
-    }
-
-    public bool isValidObjectiveLocation(tile potentialTile)
-    {
-        if (potentialTile.thisObjective != null)
-        {
-            return false;
-        }
-        for (int i = 0;i<potentialTile.neighbors.Length;i++)
-        {
-            if (potentialTile.neighbors[i] == null || potentialTile.neighbors[i].thisObjective != null)
-            {
-                return false;
-            }
-        }
-        return true;
     }
 
     public int findDistFromPlayerToEnemy()
@@ -118,13 +89,13 @@ public class mapGenerator : MonoBehaviour
         tile otherTile;
         Queue q = new Queue();
         bm.resetTiles();
-        activeTile = bm.allObjectives[0].thisTile;
+        activeTile = gm.champions[0].thisTile;
         q.Enqueue(activeTile);
         activeTile.distance = 0;
         while (q.Count > 0)
         {
             activeTile = (tile)q.Dequeue();
-            if (activeTile == bm.allObjectives[1].thisTile)
+            if (activeTile == gm.champions[1].thisTile)
             {
                 return activeTile.distance;
             }
@@ -141,29 +112,45 @@ public class mapGenerator : MonoBehaviour
         return -1;
     }
 
-    public void linkTilesToObjectives()
+    //finds the distances to each champion for each tile
+    public void findDistsToChampions(bool real)
     {
         for (int i = 0;i<bm.allTiles.Length;i++)
         {
-            bm.allTiles[i].objectives = new objective[bm.allObjectives.Length];
-            bm.allTiles[i].objectiveDists = new int[bm.allObjectives.Length];
+            if (real)
+            {
+                bm.allTiles[i].championDists = new int[2];
+            }
+            else
+            {
+                 bm.allTiles[i].hypoChampionDists = new int[2];
+            } 
         }
 
-        int objectiveIndex = 0;
         tile activeTile;
         tile otherTile;
         Queue q = new Queue();
-        for (int i = 0; i < bm.allObjectives.Length; i++)
+        for (int i = 0; i < 2; i++)
         {
             bm.resetTiles();
-            activeTile = bm.allObjectives[i].thisTile;
+            activeTile = gm.champions[i].thisTile;
+            if (!real)
+            {
+                activeTile = gm.champions[i].hypoTile;
+            }
             q.Enqueue(activeTile);
             activeTile.distance = 0;
-            while (q.Count > 0 && objectiveIndex < bm.allObjectives.Length)
+            while (q.Count > 0)
             {
                 activeTile = (tile)q.Dequeue();
-                activeTile.objectives[objectiveIndex] = bm.allObjectives[i];
-                activeTile.objectiveDists[objectiveIndex] = activeTile.distance;
+                if (real)
+                {
+                    activeTile.championDists[i] = activeTile.distance;
+                }
+                else
+                {
+                    activeTile.hypoChampionDists[i] = activeTile.distance;
+                }
                 for (int j = 0; j < activeTile.neighbors.Length; j++)
                 {
                     if (activeTile.neighbors[j] != null && activeTile.neighbors[j].distance > activeTile.distance + 1)
@@ -174,7 +161,15 @@ public class mapGenerator : MonoBehaviour
                     }
                 }
             }
-            objectiveIndex++;
+        }
+    }
+
+    public void spawnChampionMarkers()
+    {
+        for (int i = 0;i<2;i++)
+        {
+            championMarker marker = Instantiate(gm.ChampionMarker, gm.AWAY, Quaternion.identity).GetComponent<championMarker>();
+            marker.champ = gm.champions[i];
         }
     }
 
