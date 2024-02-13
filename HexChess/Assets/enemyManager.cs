@@ -276,6 +276,8 @@ public class enemyManager : MonoBehaviour
                 }
                 //remove piece from hypo board
                 currentPiece.hypoAlive = false;
+                currentPiece.hypoTile.hypoPiece = null;
+                currentPiece.hypoTile = null;
                 currentPiece.updateTargeting(false);
                 List<piece> retargeted = new List<piece>();
                 retargeted.Add(currentPiece);
@@ -400,6 +402,7 @@ public class enemyManager : MonoBehaviour
             lastFrameTime = Time.realtimeSinceStartup;
             yield return null;
         }
+        checkHypoBoard();
     }
 
     public void movePiece(piece currentPiece)
@@ -447,22 +450,61 @@ public class enemyManager : MonoBehaviour
         bm.generator.findDistsToChampions(false);
     }
 
-   /* public void storeObjectiveHypoStatuses(recursiveActionItem currentMove)
+    //checks if hypo board matches real board and reports if it doesn't
+    public void checkHypoBoard()
     {
-        currentMove.objectiveStatuses = new int[bm.allObjectives.Length];
-        for (int i = 0; i< currentMove.objectiveStatuses.Length;i++)
+        for (int i = 0; i < bm.alivePieces.Count; i++)
         {
-            currentMove.objectiveStatuses[i] = bm.allObjectives[i].hypoTeam;
+            if (!(bm.alivePieces[i].hypoAlive == bm.alivePieces[i].alive &&
+                  bm.alivePieces[i].hypoHealth == bm.alivePieces[i].health &&
+                  bm.alivePieces[i].hypoTile == bm.alivePieces[i].thisTile))
+            {
+                Debug.LogError("Hypo piece " + i + "  does not match real piece");
+            }
         }
+        for (int i = 0; i < bm.allTiles.Length; i++)
+        {
+            if (!(bm.allTiles[i].hypoPiece == bm.allTiles[i].thisPiece &&
+                  bm.allTiles[i].hypoObstacle == bm.allTiles[i].obstacle))
+            {
+                Debug.LogError("Hypo tile " + i + "  does not match real tile");
+            }
+            for (int j = 0;j<bm.allTiles[i].championDists.Length;j++)
+            {
+                if (bm.allTiles[i].championDists[j] != bm.allTiles[i].hypoChampionDists[j])
+                {
+                    Debug.LogError("Hypo champion dists do not match real champion dists");
+                }
+            }
+        }
+        checkHypoBoardTargets();
     }
 
-    public void restoreObjectiveHypoStatuses(recursiveActionItem currentMove)
+    public void checkHypoBoardTargets()
     {
-        for (int i = 0; i < currentMove.objectiveStatuses.Length; i++)
+        for (int i = 0; i < bm.alivePieces.Count; i++)
         {
-            bm.allObjectives[i].hypoTeam = currentMove.objectiveStatuses[i];
+            for (int j = 0;j< bm.alivePieces[i].targets.Count; j++)
+            {
+                if (!bm.alivePieces[i].hypoTargets.Contains(bm.alivePieces[i].targets[j]) || 
+                    bm.alivePieces[i].targets.Count != bm.alivePieces[i].hypoTargets.Count)
+                {
+                    Debug.LogError("Hypo piece  " + i + " targeting does not match real piece targeting");
+                }
+            }
         }
-    }*/
+        for (int i = 0; i < bm.allTiles.Length; i++)
+        {
+            for (int j = 0;j< bm.allTiles[i].targetedBy.Count; j++)
+            {
+                if (!bm.allTiles[i].hypoTargetedBy.Contains(bm.allTiles[i].targetedBy[j]) ||
+                    bm.allTiles[i].targetedBy.Count != bm.allTiles[i].hypoTargetedBy.Count)
+                {
+                    Debug.LogError("Hypo tile " + i + " targeting does not match real tile targeting");
+                }
+            }
+        }
+    }
 
     //finds all living pieces on real board or hypo board
     //fills playersPieces and enemyPieces regardless, only fills bm.alivePieces when run on real board
@@ -526,7 +568,7 @@ public class enemyManager : MonoBehaviour
 
     public void createChampion()
     {
-        piece newPiece = Instantiate(gm.Pieces[0], new Vector3(1000, 1000, 0), Quaternion.identity).GetComponent<piece>();
+        piece newPiece = Instantiate(gm.Pieces[1], new Vector3(1000, 1000, 0), Quaternion.identity).GetComponent<piece>();
         newPiece.team = 1;
         newPiece.init();
         newPiece.champion = true;
@@ -541,6 +583,28 @@ public class enemyManager : MonoBehaviour
             newPiece.team = 1;
             newPiece.init();
             spawnPlan.Add(newPiece);
+        }
+    }
+
+    public void undoPushes(pushedPiece[] pushedPieces)
+    {
+        if (pushedPieces == null)
+        {
+            return;
+        }
+        for (int i = 0;i<pushedPieces.Length;i++)
+        {
+            if (pushedPieces[i].thisPiece.hypoTile != pushedPieces[i].startingTile)
+            {
+                bool wasExhausted = pushedPieces[i].thisPiece.hypoExhausted;
+                pushedPieces[i].thisPiece.moveToTile(pushedPieces[i].startingTile, false);
+                pushedPieces[i].thisPiece.hypoExhausted = wasExhausted;
+            }
+            if (pushedPieces[i].pushedInto != null)
+            {
+                pushedPieces[i].thisPiece.unTakeDamage(gm.pushDamage, false);
+                pushedPieces[i].pushedInto.unTakeDamage(gm.pushDamage, false);
+            }
         }
     }
 
@@ -633,6 +697,7 @@ public class enemyManager : MonoBehaviour
             {
                 current.bestPiece.dealDamage(current.attackedPiece, false);
                 current.attackedPiece = null;
+                current.bestPiece.pushedPieces = null;//clean up unwanted info for undoing pushes
             }
 
             moveOrder.Add(current.bestPiece);
@@ -659,6 +724,8 @@ public class enemyManager : MonoBehaviour
         }
 
         //undo hypo move
+        undoPushes(above.pushedPieces);
+        above.pushedPieces = null;
         decideOrder[above.pieceIndex].moveToTile(above.previousTile, false);
         decideOrder[above.pieceIndex].hypoExhausted = false;
         decideOrder[above.pieceIndex].capturing = null;
@@ -695,7 +762,6 @@ public class enemyManager : MonoBehaviour
                 return;//not a valid move, do nothing
             }
             //make hypo move
-            //storeObjectiveHypoStatuses(current);
             current.previousTile = decideOrder[current.pieceIndex].hypoTile;
             if (current.targetListCopy[current.tileIndex].hypoPiece != null && 
                 current.targetListCopy[current.tileIndex].hypoPiece.willGetCaptured(decideOrder[current.pieceIndex], false))//here we are capturing a piece
@@ -713,6 +779,9 @@ public class enemyManager : MonoBehaviour
             {
                 decideOrder[current.pieceIndex].dealDamage(current.attackedPiece, false);
             }
+            //get pushedPieces info from piece that just moved
+            current.pushedPieces =  decideOrder[current.pieceIndex].pushedPieces;
+            decideOrder[current.pieceIndex].pushedPieces = null;
         }
 
         //add new level to stack
@@ -734,5 +803,13 @@ public class recursiveActionItem
     public piece capturedPiece;
     public piece attackedPiece;
     public tile previousTile;
+    public pushedPiece[] pushedPieces;
     //public int[] objectiveStatuses;
+}
+
+public class pushedPiece
+{
+    public tile startingTile;
+    public piece thisPiece;
+    public piece pushedInto;
 }

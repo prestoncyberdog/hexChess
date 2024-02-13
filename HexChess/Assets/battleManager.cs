@@ -46,46 +46,6 @@ public class battleManager : MonoBehaviour
     void Update()
     {
         //normal input upkeep is now handled in the ui manager
-        /*
-        if (Input.GetKeyDown(KeyCode.Space) && playersTurn)
-        {
-            playersTurn = false;
-            em.takeTurn();
-        }
-
-        if (Input.GetKeyDown(KeyCode.R))
-        {
-            gm.loadMap();
-        }
-
-        if (Input.GetMouseButtonDown(0) && !justClicked)
-        {
-            selectedPiece = null;
-            resetTiles();
-            resetHighlighting();
-        }
-        else
-        {
-            justClicked = false;//if a tile is clicked, it sets this to true
-            //this means we can select/deselect pieces regardless of update order
-        }
-
-        if (holdingPiece)
-        {
-            selectedPiece.transform.position = Camera.main.ScreenToWorldPoint(Input.mousePosition) + new Vector3(0,0,10);
-            if (Input.GetMouseButtonUp(0))
-            {
-                holdingPiece = false;
-                if (selectedPiece.alive)
-                {
-                    selectedPiece.transform.position = selectedPiece.thisTile.transform.position;
-                }
-                else
-                {
-                    selectedPiece.transform.position = selectedPiece.thisSlot.transform.position;
-                }
-            }
-        }*/
     }
 
     public void changeTurn(int whosTurn)

@@ -25,6 +25,7 @@ public class tile : MonoBehaviour
     public List<piece> hypoTargetedBy;
     public piece hypoPiece;
     public int hypoObstacle;
+    public pushedPiece thisPushedPiece;
 
     public int[] championDists;
     public int[] hypoChampionDists;

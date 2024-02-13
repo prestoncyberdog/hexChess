@@ -47,6 +47,7 @@ public class piece : MonoBehaviour
     public tile oldTile;
     public tile pushedTile;
     public tile hypoPushedTile;
+    public pushedPiece[] pushedPieces;
     public tile turnStartTile;
     public float moveRate;
     public piece capturing;
@@ -77,6 +78,7 @@ public class piece : MonoBehaviour
         specificInit();
         value = cost + qualityBonus;//may want to randomize this slightly?
         health = maxHealth;
+        hypoHealth = health;
         transform.localScale = new Vector3(transform.localScale.x * bm.generator.tileScale, transform.localScale.y * bm.generator.tileScale, 1);
         minAttackRange = 1;
         if (moveType == JUMP)
@@ -217,7 +219,7 @@ public class piece : MonoBehaviour
         {
             stepPath.Add(attacking.thisTile);
         }
-        if (pushedTile != null && pushedTile != newTile)
+        if (pushedTile != null && pushedTile != newTile)//here we bumped into the pushedTile but didn't end up there
         {
             stepPath.Add(pushedTile);
         }
@@ -241,7 +243,7 @@ public class piece : MonoBehaviour
                 }
                 if (pushedTile != null && pushedTile != newTile && stepPath[0] == pushedTile)
                 {
-                    collideWithPiece(newTile.thisPiece, true);
+                    collideWithPiece(pushedTile.thisPiece, true);
                 }
                 stepPath.RemoveAt(0);
             }
@@ -292,11 +294,7 @@ public class piece : MonoBehaviour
             }
         }
 
-        tile startTile = thisTile;
-        if (!real)
-        {
-            startTile = hypoTile;
-        }
+        tile startTile = realOrHypoTile(real);
         if (moveType != LINE)
         {
             return startTile;
@@ -320,11 +318,7 @@ public class piece : MonoBehaviour
 
     public void pushPiece(int direction, bool real)
     {
-        tile currTile = thisTile;
-        if (!real)
-        {
-            currTile = hypoTile;
-        }
+        tile currTile = realOrHypoTile(real);
         if (currTile.neighbors[direction] == null)
         {
             return;
@@ -347,7 +341,18 @@ public class piece : MonoBehaviour
         }
         else
         {
-            hypoPushedTile = currTile.neighbors[direction];//will also need to be set to null when undoing the push
+            hypoPushedTile = currTile.neighbors[direction];//needed for moveToTile
+            piece otherPiece = hypoPushedTile.hypoPiece;
+            if (otherPiece == null && hypoPushedTile.hypoObstacle == 0)
+            {
+                moveToTile(hypoPushedTile, real);
+            }
+            else if (otherPiece != null)
+            {
+                collideWithPiece(otherPiece, real);
+            }
+            storePushedPieceInfo(currTile, otherPiece);
+            hypoPushedTile = null;
         }
         //in order to handle hypothetical pushes, i need to figure out how to undo them
     }
@@ -381,6 +386,25 @@ public class piece : MonoBehaviour
             if (hypoHealth <= 0)
             {
                 getCaptured(real);
+            }
+        }
+    }
+    
+    public void unTakeDamage(int amount, bool real)
+    {
+        if (real)
+        {
+            health += amount;
+            thisHealthBar.setColors();
+            alive = true;
+        }
+        else
+        {
+            hypoHealth += amount;
+            if (!hypoAlive)
+            {
+                hypoAlive = true;
+                updateTargeting(real);
             }
         }
     }
@@ -421,11 +445,7 @@ public class piece : MonoBehaviour
     //starts from this piece and looks in a direction for another piece, only looking along a straight line
     public bool isInDirection(piece otherPiece, int dir, bool real)
     {
-        tile currTile = thisTile;
-        if (!real)
-        {
-            currTile = hypoTile;
-        }
+        tile currTile = realOrHypoTile(real);
         while (currTile.neighbors[dir] != null)
         {
             currTile = currTile.neighbors[dir];
@@ -441,6 +461,15 @@ public class piece : MonoBehaviour
     public bool canAfford()
     {
         return ((team == 0 && bm.playerEnergy >= cost) || (team == 1 && bm.enemyEnergy >= cost));
+    }
+
+    public void storePushedPieceInfo(tile formerTile, piece otherPiece)
+    {
+        pushedPiece storage = new pushedPiece();
+        storage.thisPiece = this;
+        storage.startingTile = formerTile;
+        storage.pushedInto = otherPiece;
+        formerTile.thisPushedPiece = storage;
     }
 
     public void payEnergyCost()
@@ -778,6 +807,18 @@ public class piece : MonoBehaviour
                     }
                 }
             }
+        }
+    }
+
+    public tile realOrHypoTile(bool real)
+    {
+        if (real)
+        {
+            return thisTile;
+        }
+        else
+        {
+            return hypoTile;
         }
     }
 }
