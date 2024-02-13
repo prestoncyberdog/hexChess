@@ -65,7 +65,9 @@ public class mapGenerator : MonoBehaviour
         {
             bm.placeNewPiece(gm.champions[i],gm.champions[i].thisTile);
         }
+        bm.em.copyHypoBoard();
         findDistsToChampions(true);
+        findDistsToChampions(false);
         spawnChampionMarkers();
     }
 
@@ -138,8 +140,11 @@ public class mapGenerator : MonoBehaviour
             {
                 activeTile = gm.champions[i].hypoTile;
             }
-            q.Enqueue(activeTile);
-            activeTile.distance = 0;
+            if (gm.champions[i].alive)
+            {
+                q.Enqueue(activeTile);
+                activeTile.distance = 0;
+            }
             while (q.Count > 0)
             {
                 activeTile = (tile)q.Dequeue();

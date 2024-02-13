@@ -20,7 +20,7 @@ public class battleManager : MonoBehaviour
     public int playsRemaining;
     public int playerEnergy;
     public int enemyEnergy;
-    public piece movingPiece;
+    public int movingPieces;
 
     void Start()
     {
@@ -32,6 +32,7 @@ public class battleManager : MonoBehaviour
         
         generator.setTileScale();
         alivePieces = new List<piece>();
+        movingPieces = 0;
 
         gm.createInitialTeam();//for testing only, team will exist once we have other scenes
         em.init();
@@ -44,6 +45,8 @@ public class battleManager : MonoBehaviour
 
     void Update()
     {
+        //normal input upkeep is now handled in the ui manager
+        /*
         if (Input.GetKeyDown(KeyCode.Space) && playersTurn)
         {
             playersTurn = false;
@@ -82,7 +85,7 @@ public class battleManager : MonoBehaviour
                     selectedPiece.transform.position = selectedPiece.thisSlot.transform.position;
                 }
             }
-        }
+        }*/
     }
 
     public void changeTurn(int whosTurn)

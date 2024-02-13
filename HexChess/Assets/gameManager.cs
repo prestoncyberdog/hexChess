@@ -21,9 +21,12 @@ public class gameManager : MonoBehaviour
     public piece[] champions;
     public Vector3 AWAY;
 
+    public int pushDamage;
+
     void Start()
     {
         AWAY = new Vector3(1000, 1000, 0);
+        pushDamage = 1;
         //createInitialTeam();
     }
 

@@ -18,6 +18,7 @@ public class piece : MonoBehaviour
 
     public int moveType;
     public int moveRange;
+    public int minAttackRange;
     public float value;
     public int cost;
     public float qualityBonus;
@@ -35,6 +36,7 @@ public class piece : MonoBehaviour
     public List<tile> hypoTargets;
 
     public int health;
+    public int maxHealth;
     public int damage;
     public int hypoHealth;
     public healthBar thisHealthBar;
@@ -43,6 +45,8 @@ public class piece : MonoBehaviour
 
     public tile newTile;
     public tile oldTile;
+    public tile pushedTile;
+    public tile hypoPushedTile;
     public tile turnStartTile;
     public float moveRate;
     public piece capturing;
@@ -61,7 +65,7 @@ public class piece : MonoBehaviour
         exhaustedEnemyColor = enemyColor;// new Color(1f, 0.4f, 0.4f);
 
         cost = 1;
-        health = 5;
+        maxHealth = 5;
         damage = 3;
         champion = false;
         exhausted = false;
@@ -71,8 +75,14 @@ public class piece : MonoBehaviour
             bm.alivePieces.Add(this);
         }
         specificInit();
-        value = cost + qualityBonus;
+        value = cost + qualityBonus;//may want to randomize this slightly?
+        health = maxHealth;
         transform.localScale = new Vector3(transform.localScale.x * bm.generator.tileScale, transform.localScale.y * bm.generator.tileScale, 1);
+        minAttackRange = 1;
+        if (moveType == JUMP)
+        {
+            minAttackRange = moveRange;
+        }
 
         updateTargeting(true);
         setColor();
@@ -89,6 +99,21 @@ public class piece : MonoBehaviour
     }
 
     public virtual void specificUpdate()
+    {
+        //do nothing by default
+    }
+
+    public virtual void useAttackAbility(piece target, bool real)
+    {
+        //do nothing by default
+    }
+
+    public virtual void useMoveAbility()
+    {
+        //do nothing by default
+    }
+
+    public virtual void useSummonAbility()
     {
         //do nothing by default
     }
@@ -132,19 +157,22 @@ public class piece : MonoBehaviour
         tile possibleOldTile;
         if (real)
         {
-            if (targetTile.thisPiece != null && targetTile.thisPiece != this && !targetTile.thisPiece.willGetCaptured(this, real))
+            if (pushedTile == null && targetTile.thisPiece != null && targetTile.thisPiece != this && !targetTile.thisPiece.willGetCaptured(this, real))
             {
                 //here, we will deal damage but not capture, so our resulting tile will not be the original target tile
                 attacking = targetTile.thisPiece;
                 targetTile = findEndingTile(attacking, real);//thisTile;//to be replaced
             }
-            else if (targetTile.thisPiece != null && targetTile.thisPiece != this)
+            else if (pushedTile == null &&targetTile.thisPiece != null && targetTile.thisPiece != this)
             {
                 capturing = targetTile.thisPiece;
             }
+            if (pushedTile == null)
+            {
+                exhausted = true;
+            }
             possibleOldTile = thisTile;
             oldTile = possibleOldTile;
-            exhausted = true;
             possibleOldTile.thisPiece = null;
             possibleOldTile.setColor();
             newTile = targetTile;
@@ -154,19 +182,17 @@ public class piece : MonoBehaviour
         }
         else //here its a move on the hypo board
         {
-            if (targetTile.hypoPiece != null && targetTile.hypoPiece != this && !targetTile.hypoPiece.willGetCaptured(this, real))
+            if (hypoPushedTile == null && targetTile.hypoPiece != null && targetTile.hypoPiece != this && !targetTile.hypoPiece.willGetCaptured(this, real))
             {
                 //here, we will deal damage but not capture, so our resulting tile will not be the original target tile
-                //attacking = targetTile.hypoPiece;
-                targetTile = findEndingTile(targetTile.hypoPiece, real);//hypoTile;//to be replaced
+                targetTile = findEndingTile(targetTile.hypoPiece, real);
                 //enemy manager should handle the hypothetical damage and capturing
             }
-            else if (targetTile.hypoPiece != null && targetTile.hypoPiece != this)
+            if (hypoPushedTile == null)
             {
-                //capturing = targetTile.hypoPiece;
+                hypoExhausted = true;
             }
             possibleOldTile = hypoTile;
-            hypoExhausted = true;
             possibleOldTile.hypoPiece = null;
             hypoTile = targetTile;
             hypoTile.hypoPiece = this;
@@ -185,11 +211,15 @@ public class piece : MonoBehaviour
     //allows us to delay coloring changes, captures, and sound effects, our final location is already changed in moveToTile
     public IEnumerator moveTowardsNewTile()
     {
-        bm.movingPiece = this;
+        bm.movingPieces++;
         stepPath = new List<tile>();
         if (attacking != null)
         {
             stepPath.Add(attacking.thisTile);
+        }
+        if (pushedTile != null && pushedTile != newTile)
+        {
+            stepPath.Add(pushedTile);
         }
         if (moveType == JUMP || moveType == LINE)
         {
@@ -209,6 +239,10 @@ public class piece : MonoBehaviour
                     dealDamage(attacking, true);
                     attacking = null;
                 }
+                if (pushedTile != null && pushedTile != newTile && stepPath[0] == pushedTile)
+                {
+                    collideWithPiece(newTile.thisPiece, true);
+                }
                 stepPath.RemoveAt(0);
             }
             else
@@ -219,7 +253,7 @@ public class piece : MonoBehaviour
             yield return null;
         }
         arriveOnTile();
-        bm.movingPiece = null;
+        bm.movingPieces--;
     }
 
     //take care of delayed effects of move like coloring, capturing, and sound effects. Damage/capturing happens here
@@ -234,6 +268,11 @@ public class piece : MonoBehaviour
             capturing.getCaptured(true);
             capturing = null;
         }
+        if (pushedTile == null)
+        {
+            useMoveAbility();//not if pushed
+        }
+        pushedTile = null;
         bm.resetHighlighting();
         thisHealthBar.setPositions();
     }
@@ -241,6 +280,18 @@ public class piece : MonoBehaviour
     //finds the tile we'd end up on if we attacked target
     public tile findEndingTile(piece target, bool real)
     {
+        if (target.willGetCaptured(this, real))
+        {
+            if (real)
+            {
+                return target.thisTile;
+            }
+            else
+            {
+                return target.hypoTile;
+            }
+        }
+
         tile startTile = thisTile;
         if (!real)
         {
@@ -267,9 +318,50 @@ public class piece : MonoBehaviour
         return startTile;
     }
 
+    public void pushPiece(int direction, bool real)
+    {
+        tile currTile = thisTile;
+        if (!real)
+        {
+            currTile = hypoTile;
+        }
+        if (currTile.neighbors[direction] == null)
+        {
+            return;
+        }
+        
+        if (real)
+        {
+            pushedTile = currTile.neighbors[direction];
+            oldTile = thisTile;
+            if (pushedTile.thisPiece == null && pushedTile.obstacle == 0)
+            {
+                newTile = pushedTile;
+                moveToTile(pushedTile, real);
+            }
+            else
+            {
+                newTile = thisTile;
+            }
+            StartCoroutine(this.moveTowardsNewTile());
+        }
+        else
+        {
+            hypoPushedTile = currTile.neighbors[direction];//will also need to be set to null when undoing the push
+        }
+        //in order to handle hypothetical pushes, i need to figure out how to undo them
+    }
+
+    public void collideWithPiece(piece other, bool real)
+    {
+        takeDamage(gm.pushDamage, real);
+        other.takeDamage(gm.pushDamage, real);
+    }
+
     public void dealDamage(piece target, bool real)
     {
         target.takeDamage(damage, real);
+        useAttackAbility(target, real);
     }
 
     public void takeDamage(int amount, bool real)
@@ -278,10 +370,18 @@ public class piece : MonoBehaviour
         {
             health -= amount;
             thisHealthBar.setColors();
+            if (health <= 0)
+            {
+                getCaptured(real);
+            }
         }
         else
         {
             hypoHealth -= amount;
+            if (hypoHealth <= 0)
+            {
+                getCaptured(real);
+            }
         }
     }
 
@@ -291,18 +391,22 @@ public class piece : MonoBehaviour
         target.hypoHealth += damage;
     }
 
+    //returns how much damage this piece would take after any damage reduction (in theory)
+    public int expectedDamage(int amount)
+    {
+        return amount;
+    }
+
     public bool isValidCandidate(tile target, bool real)
     {
         if (real)
         {
-            return ((target.thisPiece == null || target.thisPiece.team != team) &&
-                    target.obstacle == 0 &&
+            return (target.obstacle == 0 &&
                     exhausted == false);
         }
         else
         {
-            return ((target.hypoPiece == null || target.hypoPiece.team != team) &&
-                    target.hypoObstacle == 0 &&
+            return (target.hypoObstacle == 0 &&
                     hypoExhausted == false);
         }
     }
@@ -373,6 +477,7 @@ public class piece : MonoBehaviour
         findAllCandidates(real);
     }
 
+    //causes this piece to die, has nothing to do with capturing piece
     public void getCaptured(bool real)
     {
         if (real)
@@ -381,6 +486,14 @@ public class piece : MonoBehaviour
             updateTargeting(real);//removes all targeting
             bm.alivePieces.Remove(this);
             thisHealthBar.destroyAll();
+            if (champion)//shouldnt matter once battle end is implemented
+            {
+                bm.generator.findDistsToChampions(real);
+                if (real)
+                {
+                    bm.generator.findDistsToChampions(false);
+                }
+            }
             if (team == 0)
             {
                 bm.em.playerPieces.Remove(this);
@@ -389,12 +502,6 @@ public class piece : MonoBehaviour
             }
             if (team == 1)
             {
-                if (champion)//shouldnt matter once battle end is implemented
-                {
-                    thisTile.thisPiece = null;
-                    thisTile = null;
-                    bm.generator.findDistsToChampions(real);
-                }
                 bm.em.enemyPieces.Remove(this);
                 Destroy(gameObject);
             }

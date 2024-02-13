@@ -64,54 +64,7 @@ public class tile : MonoBehaviour
 
     private void OnMouseOver()
     {
-        if (Input.GetMouseButtonDown(0))
-        {
-            if (bm.selectedPiece != null && bm.selectedPiece.alive && !bm.selectedPiece.exhausted && targetedBy.Contains(bm.selectedPiece) && bm.selectedPiece.team == 0 && bm.playersTurn &&
-                bm.selectedPiece.isValidCandidate(this, true))//moving piece
-            {
-                bm.selectedPiece.moveToTile(this, true);
-                StartCoroutine(bm.selectedPiece.moveTowardsNewTile());
-                bm.resetTiles();
-                bm.resetHighlighting();
-            }
-            else if(bm.selectedPiece != null && !bm.selectedPiece.alive && bm.playersTurn && isValidPlacement(0, true) && bm.selectedPiece.canAfford())//placing piece
-            {
-                bm.placeNewPiece(bm.selectedPiece, this);
-                bm.selectedPiece.payEnergyCost();
-            }
-            if (thisPiece != null)
-            {
-                bm.selectedPiece = thisPiece;
-                bm.justClicked = true;
-                bm.resetHighlighting();
-                if (!thisPiece.exhausted && thisPiece.team == 0 && bm.playersTurn)
-                {
-                    bm.holdingPiece = true;
-                }
-            }
-        }
-
-        if (Input.GetMouseButtonUp(0))
-        {
-            if (bm.selectedPiece != null && bm.holdingPiece && bm.selectedPiece.alive && !bm.selectedPiece.exhausted && targetedBy.Contains(bm.selectedPiece) &&
-                bm.selectedPiece.isValidCandidate(this, true))//moving piece
-            {
-                if (thisPiece != null)
-                {
-                    thisPiece.getCaptured(true);
-                }
-                bm.holdingPiece = false;
-                bm.selectedPiece.moveToTile(this, true);
-                bm.selectedPiece.arriveOnTile();
-                bm.resetHighlighting();
-            }
-            else if (bm.selectedPiece != null && bm.holdingPiece && !bm.selectedPiece.alive && bm.playersTurn && isValidPlacement(0, true) && bm.selectedPiece.canAfford())//placing piece
-            {
-                bm.placeNewPiece(bm.selectedPiece, this);
-                bm.holdingPiece = false;
-                bm.selectedPiece.payEnergyCost();
-            }
-        }
+        bm.um.tileMouseOver(this);
     }
 
     //updates targeting for each piece in targetedBy list
@@ -152,6 +105,18 @@ public class tile : MonoBehaviour
     {
         return ((real && championDists[team] == 1) ||
                 (!real && hypoChampionDists[team] == 1));
+    }
+
+    public void pushTile(int direction, bool real)
+    {
+        if (real && thisPiece != null)
+        {
+            thisPiece.pushPiece(direction, real);
+        }
+        else if (!real && hypoPiece != null)
+        {
+            hypoPiece.pushPiece(direction, real);
+        }
     }
 
     public void setColor()

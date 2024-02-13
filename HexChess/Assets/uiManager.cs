@@ -30,7 +30,114 @@ public class uiManager : MonoBehaviour
 
     void Update()
     {
+        checkInputs();
         updateText();
+    }
+
+    public void tileMouseOver(tile currTile)
+    {
+        if (Input.GetMouseButtonDown(0))//use left click to select and place pieces
+        {
+            if(bm.selectedPiece != null && !bm.selectedPiece.alive && bm.playersTurn && currTile.isValidPlacement(0, true) && bm.selectedPiece.canAfford())//placing piece
+            {
+                bm.placeNewPiece(bm.selectedPiece, currTile);
+                bm.selectedPiece.payEnergyCost();
+            }
+            if (currTile.thisPiece != null)//selecting piece
+            {
+                bm.selectedPiece = currTile.thisPiece;
+                bm.justClicked = true;
+                bm.resetHighlighting();
+                if (!currTile.thisPiece.exhausted && currTile.thisPiece.team == 0 && bm.playersTurn)
+                {
+                    bm.holdingPiece = true;
+                }
+            }
+        }
+
+        if (Input.GetMouseButtonDown(1))//use right click to make pieces move or place them
+        {
+            if (bm.selectedPiece != null && bm.selectedPiece.alive && !bm.selectedPiece.exhausted && currTile.targetedBy.Contains(bm.selectedPiece) && bm.selectedPiece.team == 0 && bm.playersTurn &&
+                bm.selectedPiece.isValidCandidate(currTile, true))//moving piece
+            {
+                bm.selectedPiece.moveToTile(currTile, true);
+                StartCoroutine(bm.selectedPiece.moveTowardsNewTile());
+                bm.resetTiles();
+                bm.resetHighlighting();
+            }
+            if(bm.selectedPiece != null && !bm.selectedPiece.alive && bm.playersTurn && currTile.isValidPlacement(0, true) && bm.selectedPiece.canAfford())//placing piece
+            {
+                bm.placeNewPiece(bm.selectedPiece, currTile);
+                bm.selectedPiece.payEnergyCost();
+            }
+        }
+
+        if (Input.GetMouseButtonUp(0))//use drag and drop to move and place pieces
+        {
+            if (bm.selectedPiece != null && bm.holdingPiece && bm.selectedPiece.alive && !bm.selectedPiece.exhausted && currTile.targetedBy.Contains(bm.selectedPiece) &&
+                bm.selectedPiece.isValidCandidate(currTile, true))//moving piece
+            {
+                bm.holdingPiece = false;
+                bm.selectedPiece.moveToTile(currTile, true);
+                bm.selectedPiece.arriveOnTile();
+                if (bm.selectedPiece.attacking != null)
+                {
+                    bm.selectedPiece.dealDamage(bm.selectedPiece.attacking, true);
+                    bm.selectedPiece.attacking = null;
+                }
+                bm.resetHighlighting();
+            }
+            else if (bm.selectedPiece != null && bm.holdingPiece && !bm.selectedPiece.alive && bm.playersTurn && currTile.isValidPlacement(0, true) && bm.selectedPiece.canAfford())//placing piece
+            {
+                bm.placeNewPiece(bm.selectedPiece, currTile);
+                bm.holdingPiece = false;
+                bm.selectedPiece.payEnergyCost();
+            }
+        }
+    }
+
+//routine checks for inputs each frame
+    public void checkInputs()
+    {
+        if (Input.GetKeyDown(KeyCode.Space) && bm.playersTurn)
+        {
+            bm.playersTurn = false;
+            bm.em.takeTurn();
+        }
+
+        if (Input.GetKeyDown(KeyCode.R))
+        {
+            gm.loadMap();
+        }
+
+        if (Input.GetMouseButtonDown(0) && !bm.justClicked)
+        {
+            bm.selectedPiece = null;
+            bm.resetTiles();
+            bm.resetHighlighting();
+        }
+        else
+        {
+            bm.justClicked = false;//if a tile is clicked, it sets this to true
+            //this means we can select/deselect pieces regardless of update order
+        }
+
+        if (bm.holdingPiece)
+        {
+            bm.selectedPiece.transform.position = Camera.main.ScreenToWorldPoint(Input.mousePosition) + new Vector3(0,0,10);
+            if (Input.GetMouseButtonUp(0))
+            {
+                bm.holdingPiece = false;
+                if (bm.selectedPiece.alive)
+                {
+                    bm.selectedPiece.transform.position = bm.selectedPiece.thisTile.transform.position;
+                }
+                else
+                {
+                    bm.selectedPiece.transform.position = bm.selectedPiece.thisSlot.transform.position;
+                }
+            }
+        }
     }
 
     public void resetHighlighting()
