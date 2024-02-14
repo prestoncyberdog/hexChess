@@ -586,28 +586,6 @@ public class enemyManager : MonoBehaviour
         }
     }
 
-    public void undoPushes(pushedPiece[] pushedPieces)
-    {
-        if (pushedPieces == null)
-        {
-            return;
-        }
-        for (int i = 0;i<pushedPieces.Length;i++)
-        {
-            if (pushedPieces[i].thisPiece.hypoTile != pushedPieces[i].startingTile)
-            {
-                bool wasExhausted = pushedPieces[i].thisPiece.hypoExhausted;
-                pushedPieces[i].thisPiece.moveToTile(pushedPieces[i].startingTile, false);
-                pushedPieces[i].thisPiece.hypoExhausted = wasExhausted;
-            }
-            if (pushedPieces[i].pushedInto != null)
-            {
-                pushedPieces[i].thisPiece.unTakeDamage(gm.pushDamage, false);
-                pushedPieces[i].pushedInto.unTakeDamage(gm.pushDamage, false);
-            }
-        }
-    }
-
     //each piece must recieve an intention tile and the pieces will be ordered in moveOrder
     //this function is reworked to be not recursive so that it can be a coroutine and yield each frame
     public IEnumerator decideActions()
@@ -697,7 +675,6 @@ public class enemyManager : MonoBehaviour
             {
                 current.bestPiece.dealDamage(current.attackedPiece, false);
                 current.attackedPiece = null;
-                current.bestPiece.pushedPieces = null;//clean up unwanted info for undoing pushes
             }
 
             moveOrder.Add(current.bestPiece);
@@ -724,8 +701,8 @@ public class enemyManager : MonoBehaviour
         }
 
         //undo hypo move
-        undoPushes(above.pushedPieces);
-        above.pushedPieces = null;
+        decideOrder[above.pieceIndex].undoAttackAbility();
+        decideOrder[above.pieceIndex].undoMoveAbility();
         decideOrder[above.pieceIndex].moveToTile(above.previousTile, false);
         decideOrder[above.pieceIndex].hypoExhausted = false;
         decideOrder[above.pieceIndex].capturing = null;
@@ -740,7 +717,6 @@ public class enemyManager : MonoBehaviour
             decideOrder[above.pieceIndex].unDealDamage(above.attackedPiece);
             above.attackedPiece = null;
         }
-        //restoreObjectiveHypoStatuses(above);
 
         //remove level from stack
         stack.RemoveAt(0);
@@ -751,7 +727,6 @@ public class enemyManager : MonoBehaviour
         if (current.tileIndex == -1)//piece not moving
         {
             //make hypo move
-            //storeObjectiveHypoStatuses(current);
             decideOrder[current.pieceIndex].hypoExhausted = true;
             current.previousTile = decideOrder[current.pieceIndex].hypoTile;
         }
@@ -772,16 +747,12 @@ public class enemyManager : MonoBehaviour
             else if (current.targetListCopy[current.tileIndex].hypoPiece != null)//here, we are attacking but not capturing another piece
             {
                 current.attackedPiece = current.targetListCopy[current.tileIndex].hypoPiece;
-                //decideOrder[current.pieceIndex].dealDamage(current.attackedPiece, false);
             }
             decideOrder[current.pieceIndex].moveToTile(current.targetListCopy[current.tileIndex], false);
             if (current.attackedPiece != null)
             {
                 decideOrder[current.pieceIndex].dealDamage(current.attackedPiece, false);
             }
-            //get pushedPieces info from piece that just moved
-            current.pushedPieces =  decideOrder[current.pieceIndex].pushedPieces;
-            decideOrder[current.pieceIndex].pushedPieces = null;
         }
 
         //add new level to stack
@@ -803,13 +774,4 @@ public class recursiveActionItem
     public piece capturedPiece;
     public piece attackedPiece;
     public tile previousTile;
-    public pushedPiece[] pushedPieces;
-    //public int[] objectiveStatuses;
-}
-
-public class pushedPiece
-{
-    public tile startingTile;
-    public piece thisPiece;
-    public piece pushedInto;
 }

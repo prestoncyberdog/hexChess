@@ -147,5 +147,33 @@ public class battleManager : MonoBehaviour
         return nearest;
     }
 
+    public void undoPushes(pushedPiece[] pushedPieces)
+    {
+        if (pushedPieces == null)
+        {
+            return;
+        }
+        for (int i = 0;i<pushedPieces.Length;i++)
+        {
+            if (pushedPieces[i].thisPiece.hypoTile != pushedPieces[i].startingTile)
+            {
+                bool wasExhausted = pushedPieces[i].thisPiece.hypoExhausted;
+                pushedPieces[i].thisPiece.moveToTile(pushedPieces[i].startingTile, false);
+                pushedPieces[i].thisPiece.hypoExhausted = wasExhausted;
+            }
+            if (pushedPieces[i].pushedInto != null)
+            {
+                pushedPieces[i].thisPiece.unTakeDamage(gm.pushDamage, false);
+                pushedPieces[i].pushedInto.unTakeDamage(gm.pushDamage, false);
+            }
+        }
+    }
     
+}
+
+public class pushedPiece
+{
+    public tile startingTile;
+    public piece thisPiece;
+    public piece pushedInto;
 }

@@ -24,16 +24,13 @@ public class lineBishop : piece
     //push target piece when attacking
     public override void useAttackAbility(piece target, bool real)
     {
+        pushedPieces = null;
         tile targetTile;
         for (int i = 0; i < 6; i++)
         {
             if (isInDirection(target, i, real))
             {
-                targetTile=target.thisTile;
-                if (!real)
-                {
-                    targetTile = target.hypoTile;
-                }
+                targetTile=target.realOrHypoTile(real);
 
                 targetTile.pushTile(i, real);
                 if (!real && targetTile.thisPushedPiece != null)
@@ -45,5 +42,11 @@ public class lineBishop : piece
                 return;
             }
         }
+    }
+
+    public override void undoAttackAbility()
+    {
+        bm.undoPushes(pushedPieces);
+        pushedPieces = null;
     }
 }

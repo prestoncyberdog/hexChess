@@ -50,6 +50,7 @@ MonoBehaviour:
   - {fileID: 9104216260441627637, guid: 3494573edbdfba642b153c5233582fac, type: 3}
   - {fileID: 66790153423641048, guid: 8b8409ca46bc9a8478ef9f31a0147d82, type: 3}
   - {fileID: 972764397826057050, guid: 121858e30615516499305cbc4bb07ac5, type: 3}
+  - {fileID: 3213933667526350558, guid: 06ebc6dabc86e3c418ab2cc91e6b674f, type: 3}
   EnemyManager: {fileID: 3087165918241259408, guid: 113d1f631c9d9544e997ace5517c582d,
     type: 3}
   UIManager: {fileID: 8196796942768952676, guid: 90b2dc725f5a56e44b41fe5f962d3e93,
@@ -68,3 +69,4 @@ MonoBehaviour:
   playerPieces: []
   champions: []
   AWAY: {x: 0, y: 0, z: 0}
+  pushDamage: 0

@@ -95,30 +95,17 @@ public class piece : MonoBehaviour
 
     }
 
-    public virtual void specificInit()
-    {
-        //do nothing by default
-    }
+    public virtual void specificInit(){}
+    public virtual void specificUpdate(){}
 
-    public virtual void specificUpdate()
-    {
-        //do nothing by default
-    }
+    public virtual void useAttackAbility(piece target, bool real){}
+    public virtual void undoAttackAbility(){}
 
-    public virtual void useAttackAbility(piece target, bool real)
-    {
-        //do nothing by default
-    }
+    public virtual void useMoveAbility(bool real){}
+    public virtual void undoMoveAbility(){}
 
-    public virtual void useMoveAbility()
-    {
-        //do nothing by default
-    }
-
-    public virtual void useSummonAbility()
-    {
-        //do nothing by default
-    }
+    public virtual void useSummonAbility(bool real){}
+    public virtual void undoSummonAbility(){}
 
     //does not include exhausting new pieces
     public void placePiece(tile targetTile, bool real)
@@ -272,7 +259,7 @@ public class piece : MonoBehaviour
         }
         if (pushedTile == null)
         {
-            useMoveAbility();//not if pushed
+            useMoveAbility(true);//not if pushed
         }
         pushedTile = null;
         bm.resetHighlighting();
