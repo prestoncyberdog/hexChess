@@ -9,6 +9,8 @@ public class stepPawn : piece
         moveType = STEP;
         moveRange = 1;
         cost = 10;
+        maxHealth = 2;
+        damage = 1;
         qualityBonus = 0;
 
         transform.localScale = new Vector3(1.8f, 1.8f, 1);

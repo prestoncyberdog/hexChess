@@ -32,7 +32,7 @@ public class lineBishop : piece
             {
                 targetTile=target.realOrHypoTile(real);
                 targetTile.pushTile(i, real);
-                if (!real && targetTile.thisPushedPiece != null)
+                if (targetTile.thisPushedPiece != null)
                 {
                     pushedPieces.Add(targetTile.thisPushedPiece);
                     targetTile.thisPushedPiece = null;
@@ -46,9 +46,9 @@ public class lineBishop : piece
         }
     }
 
-    public override void undoAttackAbility()
+    public override void undoAttackAbility(bool real)
     {
-        bm.undoPushes(pushedPieces);
+        bm.undoPushes(pushedPieces, real);
         pushedPieces = null;
     }
 }

@@ -265,7 +265,6 @@ public class enemyManager : MonoBehaviour
             for (int i = 0;i<spawnTiles.Count;i++)
             {
                 //place piece on hypo board
-                currentPiece.hypoAlive = true;
                 currentPiece.placePiece(spawnTiles[i], false);
                 //evaluate
                 currentVal = evaluatePosition();
@@ -274,14 +273,14 @@ public class enemyManager : MonoBehaviour
                     bestVal = currentVal;
                     bestTile = spawnTiles[i];
                 }
-                //remove piece from hypo board
-                currentPiece.hypoAlive = false;
-                currentPiece.hypoTile.hypoPiece = null;
-                currentPiece.hypoTile = null;
-                currentPiece.updateTargeting(false);
+                //remove piece from hypo board (undo placement)
+                reversableMove thisPlacement = new reversableMove(currentPiece);
+                bm.undoMove(thisPlacement, false);
+
+                /*currentPiece.getCaptured(false);
                 List<piece> retargeted = new List<piece>();
                 retargeted.Add(currentPiece);
-                spawnTiles[i].updateTargeting(false, ref retargeted);
+                spawnTiles[i].updateTargeting(false, ref retargeted);*/
             }
             //place piece on hypo board
             currentPiece.hypoAlive = true;
@@ -291,7 +290,6 @@ public class enemyManager : MonoBehaviour
             moveOrder.Add(currentPiece);
             currentPiece.intention = bestTile;
             spawnTiles.Remove(bestTile);
-            bm.playsRemaining--;
         }
         readyToEnd = true; //allows piece moving coroutine to end turn when ready
     }
@@ -311,7 +309,7 @@ public class enemyManager : MonoBehaviour
             {
                 if (firstPiece == null)
                 {
-                    firstPiece = enemyPieces[i];//will only be relevant if there are no useful objectives, in which case any piece is fine
+                    firstPiece = enemyPieces[i];
                 }
                 currDist = enemyPieces[i].hypoTile.hypoChampionDists[0];
                 if (currDist < minDist)
@@ -435,8 +433,6 @@ public class enemyManager : MonoBehaviour
             bm.alivePieces[i].hypoHealth = bm.alivePieces[i].health;
             bm.alivePieces[i].hypoTile = bm.alivePieces[i].thisTile;
             bm.alivePieces[i].turnStartTile = bm.alivePieces[i].thisTile;
-
-            bm.alivePieces[i].pushedPieces = null;
             //copy targets
             bm.alivePieces[i].hypoTargets = new List<tile>();
             copyTileList(bm.alivePieces[i].targets, bm.alivePieces[i].hypoTargets);
@@ -703,8 +699,12 @@ public class enemyManager : MonoBehaviour
             }
         }
 
+        reversableMove thisMove = new reversableMove(decideOrder[above.pieceIndex], above.previousTile, above.attackedPiece, above.capturedPiece);
+        bm.undoMove(thisMove, false);
+        above.capturedPiece = null;
+        above.attackedPiece = null;
         //undo hypo move
-        decideOrder[above.pieceIndex].undoAttackAbility();
+        /*decideOrder[above.pieceIndex].undoAttackAbility();
         decideOrder[above.pieceIndex].undoMoveAbility();
         decideOrder[above.pieceIndex].moveToTile(above.previousTile, false);
         decideOrder[above.pieceIndex].hypoExhausted = false;
@@ -719,7 +719,7 @@ public class enemyManager : MonoBehaviour
         {
             decideOrder[above.pieceIndex].unDealDamage(above.attackedPiece);
             above.attackedPiece = null;
-        }
+        }*/
 
         //remove level from stack
         stack.RemoveAt(0);

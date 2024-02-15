@@ -30,7 +30,7 @@ public class jumpPulse : piece
             if (targetTile != null)
             {
                 targetTile.pushTile(i, real);
-                if (!real && targetTile.thisPushedPiece != null)
+                if (targetTile.thisPushedPiece != null)
                 {
                     pushedPieces.Add(targetTile.thisPushedPiece);
                     targetTile.thisPushedPiece = null;
@@ -43,9 +43,9 @@ public class jumpPulse : piece
         }
     }
 
-    public override void undoMoveAbility()
+    public override void undoMoveAbility(bool real)
     {
-        bm.undoPushes(pushedPieces);
+        bm.undoPushes(pushedPieces, real);
         pushedPieces = null;
     }
 }

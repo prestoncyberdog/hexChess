@@ -38,7 +38,7 @@ public class uiManager : MonoBehaviour
     {
         if (Input.GetMouseButtonDown(0))//use left click to select and place pieces
         {
-            if(bm.selectedPiece != null && !bm.selectedPiece.alive && bm.playersTurn && currTile.isValidPlacement(0, true) && bm.selectedPiece.canAfford())//placing piece
+            if(bm.selectedPiece != null && !bm.selectedPiece.alive && bm.playersTurn && currTile.isValidPlacement(0, true) && bm.selectedPiece.canAfford() && bm.movingPieces == 0)//placing piece
             {
                 bm.placeNewPiece(bm.selectedPiece, currTile);
                 bm.selectedPiece.payEnergyCost();
@@ -58,14 +58,14 @@ public class uiManager : MonoBehaviour
         if (Input.GetMouseButtonDown(1))//use right click to make pieces move or place them
         {
             if (bm.selectedPiece != null && bm.selectedPiece.alive && !bm.selectedPiece.exhausted && currTile.targetedBy.Contains(bm.selectedPiece) && bm.selectedPiece.team == 0 && bm.playersTurn &&
-                bm.selectedPiece.isValidCandidate(currTile, true))//moving piece
+                bm.selectedPiece.isValidCandidate(currTile, true) && bm.movingPieces == 0)//moving piece
             {
                 bm.selectedPiece.moveToTile(currTile, true);
                 StartCoroutine(bm.selectedPiece.moveTowardsNewTile());
                 bm.resetTiles();
-                bm.resetHighlighting();
+                //bm.resetHighlighting();
             }
-            if(bm.selectedPiece != null && !bm.selectedPiece.alive && bm.playersTurn && currTile.isValidPlacement(0, true) && bm.selectedPiece.canAfford())//placing piece
+            if(bm.selectedPiece != null && !bm.selectedPiece.alive && bm.playersTurn && currTile.isValidPlacement(0, true) && bm.selectedPiece.canAfford() && bm.movingPieces == 0)//placing piece
             {
                 bm.placeNewPiece(bm.selectedPiece, currTile);
                 bm.selectedPiece.payEnergyCost();
@@ -75,7 +75,7 @@ public class uiManager : MonoBehaviour
         if (Input.GetMouseButtonUp(0))//use drag and drop to move and place pieces
         {
             if (bm.selectedPiece != null && bm.holdingPiece && bm.selectedPiece.alive && !bm.selectedPiece.exhausted && currTile.targetedBy.Contains(bm.selectedPiece) &&
-                bm.selectedPiece.isValidCandidate(currTile, true))//moving piece
+                bm.selectedPiece.isValidCandidate(currTile, true) && bm.movingPieces == 0)//moving piece
             {
                 bm.holdingPiece = false;
                 bm.selectedPiece.moveToTile(currTile, true);
@@ -85,9 +85,10 @@ public class uiManager : MonoBehaviour
                     bm.selectedPiece.dealDamage(bm.selectedPiece.attacking, true);
                     bm.selectedPiece.attacking = null;
                 }
-                bm.resetHighlighting();
+                //bm.resetHighlighting();
             }
-            else if (bm.selectedPiece != null && bm.holdingPiece && !bm.selectedPiece.alive && bm.playersTurn && currTile.isValidPlacement(0, true) && bm.selectedPiece.canAfford())//placing piece
+            else if (bm.selectedPiece != null && bm.holdingPiece && !bm.selectedPiece.alive && bm.playersTurn && 
+                     currTile.isValidPlacement(0, true) && bm.selectedPiece.canAfford() && bm.movingPieces == 0)//placing piece
             {
                 bm.placeNewPiece(bm.selectedPiece, currTile);
                 bm.holdingPiece = false;
@@ -108,6 +109,16 @@ public class uiManager : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.R))
         {
             gm.loadMap();
+        }
+
+        if (Input.GetKeyDown(KeyCode.Q))
+        {
+            if (bm.movingPieces == 0 && bm.playersTurn && bm.undoStack.Count > 0)
+            {
+                reversableMove lastMove = bm.undoStack[0];
+                bm.undoStack.RemoveAt(0);
+                bm.undoMove(lastMove, true);
+            }
         }
 
         if (Input.GetMouseButtonDown(0) && !bm.justClicked)

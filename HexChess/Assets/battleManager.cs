@@ -13,6 +13,7 @@ public class battleManager : MonoBehaviour
     public tile[] allTiles;
     public List<piece> alivePieces;
     public List<piece> recentlyCaptured;
+    public List<reversableMove> undoStack;
 
     public piece selectedPiece;
     public bool holdingPiece;
@@ -34,6 +35,7 @@ public class battleManager : MonoBehaviour
         generator.setTileScale();
         alivePieces = new List<piece>();
         recentlyCaptured = new List<piece>();
+        undoStack = new List<reversableMove>();
         movingPieces = 0;
 
         gm.createInitialTeam();//for testing only, team will exist once we have other scenes
@@ -53,7 +55,7 @@ public class battleManager : MonoBehaviour
     public void changeTurn(int whosTurn)
     {
         em.unexhaustPieces();
-        clearCapturedPieces();
+        clearUndoStorage();
         playersTurn = (whosTurn == 0);
         giveTurnBonuses(whosTurn);
         resetHighlighting();
@@ -73,6 +75,28 @@ public class battleManager : MonoBehaviour
         }
     }
 
+    public void clearUndoStorage()
+    {
+        for (int i = 0; i < alivePieces.Count; i++)
+        {
+            alivePieces[i].pushedPieces = null;
+        }
+        while (recentlyCaptured.Count > 0)
+        {
+            if (recentlyCaptured[0].team == 0)
+            {
+                recentlyCaptured[0].cost = Mathf.Min(recentlyCaptured[0].cost * 2, 999);
+                recentlyCaptured[0].moveToSlot(um.findOpenSlot());
+            }
+            if (recentlyCaptured[0].team == 1)
+            {
+                Destroy(recentlyCaptured[0].gameObject);
+            }
+            recentlyCaptured.RemoveAt(0);
+        }
+        undoStack = new List<reversableMove>();
+    }
+
     //places new piece, but does not create it, piece must already exist and be on the correct team
     public void placeNewPiece(piece newPiece, tile newTile)
     {
@@ -80,7 +104,6 @@ public class battleManager : MonoBehaviour
         newPiece.exhausted = true;
         newPiece.placePiece(newTile, true);
         newPiece.transform.position = newTile.transform.position;
-        playsRemaining--;
         if (newPiece.thisSlot != null)
         {
             newPiece.thisSlot.thisPiece = null;
@@ -92,21 +115,94 @@ public class battleManager : MonoBehaviour
             alivePieces.Add(newPiece);
         }
         resetHighlighting();
-    }
 
-    public void undoMove()
-    {
-
-    }
-
-    public void clearCapturedPieces()
-    {
-        for (int i = 0;i<recentlyCaptured.Count;i++)
+        if (newPiece.team == 0 && !newPiece.champion)
         {
-            recentlyCaptured[i].thisHealthBar.destroyAll();
-            Destroy(recentlyCaptured[i].gameObject);
+            reversableMove thisPlacement = new reversableMove(newPiece);
+            undoStack.Insert(0, thisPlacement);
         }
-        recentlyCaptured = new List<piece>();
+    }
+
+    public void undoMove(reversableMove lastMove, bool real)
+    {
+        if (lastMove.startingTile == null)
+        {
+            undoPlacement(lastMove, real);
+            return;
+        }
+        tile moveEndTile = lastMove.movedPiece.realOrHypoTile(real);//refers to the end of the move we are undoing
+        lastMove.movedPiece.undoMoveAbility(real);
+        lastMove.movedPiece.moveToTile(lastMove.startingTile, real);
+        if (lastMove.captured != null)
+        {
+            lastMove.captured.unGetCaptured(moveEndTile, real);
+        }
+        if (lastMove.attacked != null)
+        {
+            lastMove.movedPiece.unDealDamage(lastMove.attacked, real);
+        }
+        
+        if (real)
+        {
+            lastMove.movedPiece.arriveOnTile();
+            lastMove.movedPiece.exhausted = false;
+            resetHighlighting();
+        }
+        else
+        {
+            lastMove.movedPiece.hypoExhausted = false;
+        }
+    }
+
+    public void undoPlacement(reversableMove placement, bool real)
+    {
+        tile placedTile = placement.movedPiece.realOrHypoTile(real);
+        placement.movedPiece.getCaptured(real);
+        List<piece> retargeted = new List<piece>();
+        retargeted.Add(placement.movedPiece);
+        placedTile.updateTargeting(real, ref retargeted);
+        if (real)
+        {
+            recentlyCaptured.Remove(placement.movedPiece);
+            placement.movedPiece.moveToSlot(um.findOpenSlot());
+            placement.movedPiece.refundEnergyCost();
+            resetHighlighting();
+        }
+    }
+
+    public void undoPushes(List<pushedPiece> pushedPieces, bool real)
+    {
+        if (pushedPieces == null)
+        {
+            return;
+        }
+        for (int i = 0;i<pushedPieces.Count;i++)
+        {
+            if (pushedPieces[i] != null)
+            {
+                if (pushedPieces[i].thisPiece.realOrHypoTile(real) != pushedPieces[i].startingTile)
+                {
+                    if (real)
+                    {
+                        pushedPieces[i].thisPiece.pushedTile = pushedPieces[i].startingTile;//to prevent using ability when undoing a push
+                        pushedPieces[i].thisPiece.moveToTile(pushedPieces[i].startingTile, real);
+                        pushedPieces[i].thisPiece.arriveOnTile();
+                        pushedPieces[i].thisPiece.pushedTile = null;
+                    }
+                    else
+                    {
+                        pushedPieces[i].thisPiece.hypoPushedTile = pushedPieces[i].startingTile;//to prevent using ability when undoing a push
+                        pushedPieces[i].thisPiece.moveToTile(pushedPieces[i].startingTile, real);
+                        pushedPieces[i].thisPiece.hypoPushedTile = null;
+                    }
+                }
+                if (pushedPieces[i].pushedInto != null)//undo collision damage
+                {
+                    pushedPieces[i].thisPiece.unTakeDamage(gm.pushDamage, real);
+                    pushedPieces[i].pushedInto.unTakeDamage(gm.pushDamage, real);
+                }
+            }
+        }
     }
 
     //reset distance measures for all tiles
@@ -164,34 +260,6 @@ public class battleManager : MonoBehaviour
         }
         return nearest;
     }
-
-    public void undoPushes(List<pushedPiece> pushedPieces)
-    {
-        if (pushedPieces == null)
-        {
-            return;
-        }
-        for (int i = 0;i<pushedPieces.Count;i++)
-        {
-            if (pushedPieces[i] != null)
-            {
-                if (pushedPieces[i].thisPiece.hypoTile != pushedPieces[i].startingTile)
-                {
-                    bool wasExhausted = pushedPieces[i].thisPiece.hypoExhausted;
-                    pushedPieces[i].thisPiece.hypoPushedTile = pushedPieces[i].startingTile;//to prevent using ability when undoing a push
-                    pushedPieces[i].thisPiece.moveToTile(pushedPieces[i].startingTile, false);
-                    pushedPieces[i].thisPiece.hypoPushedTile = null;
-                    pushedPieces[i].thisPiece.hypoExhausted = wasExhausted;
-                }
-                if (pushedPieces[i].pushedInto != null)
-                {
-                    pushedPieces[i].thisPiece.unTakeDamage(gm.pushDamage, false);
-                    pushedPieces[i].pushedInto.unTakeDamage(gm.pushDamage, false);
-                }
-            }
-        }
-    }
-    
 }
 
 public class pushedPiece
@@ -199,4 +267,26 @@ public class pushedPiece
     public tile startingTile;
     public piece thisPiece;
     public piece pushedInto;
+}
+
+public class reversableMove
+{
+    public piece movedPiece;
+    public tile startingTile;
+    public piece attacked;
+    public piece captured;
+    //list of pushed pieces will be stored in the movedPiece
+
+    public reversableMove(piece moved, tile start, piece att, piece cap)
+    {
+        movedPiece = moved;
+        startingTile = start;
+        attacked = att;
+        captured = cap;
+    }
+
+    public reversableMove(piece moved)
+    {
+        movedPiece = moved;
+    }
 }
