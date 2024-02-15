@@ -22,7 +22,7 @@ public class jumpPulse : piece
     //push all adjacent pieces after moving
     public override void useMoveAbility(bool real)
     {
-        pushedPieces = null;
+        pushedPieces = new List<pushedPiece>();
         tile targetTile;
         for (int i = 0; i < 6; i++)
         {
@@ -32,11 +32,14 @@ public class jumpPulse : piece
                 targetTile.pushTile(i, real);
                 if (!real && targetTile.thisPushedPiece != null)
                 {
-                    pushedPieces = new pushedPiece[6];
-                    pushedPieces[i] = targetTile.thisPushedPiece;
+                    pushedPieces.Add(targetTile.thisPushedPiece);
                     targetTile.thisPushedPiece = null;
                 }
             }
+        }
+        if (pushedPieces.Count == 0)
+        {
+            pushedPieces = null;
         }
     }
 

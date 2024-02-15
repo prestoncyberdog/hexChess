@@ -12,6 +12,7 @@ public class battleManager : MonoBehaviour
 
     public tile[] allTiles;
     public List<piece> alivePieces;
+    public List<piece> recentlyCaptured;
 
     public piece selectedPiece;
     public bool holdingPiece;
@@ -32,6 +33,7 @@ public class battleManager : MonoBehaviour
         
         generator.setTileScale();
         alivePieces = new List<piece>();
+        recentlyCaptured = new List<piece>();
         movingPieces = 0;
 
         gm.createInitialTeam();//for testing only, team will exist once we have other scenes
@@ -51,6 +53,7 @@ public class battleManager : MonoBehaviour
     public void changeTurn(int whosTurn)
     {
         em.unexhaustPieces();
+        clearCapturedPieces();
         playersTurn = (whosTurn == 0);
         giveTurnBonuses(whosTurn);
         resetHighlighting();
@@ -89,6 +92,21 @@ public class battleManager : MonoBehaviour
             alivePieces.Add(newPiece);
         }
         resetHighlighting();
+    }
+
+    public void undoMove()
+    {
+
+    }
+
+    public void clearCapturedPieces()
+    {
+        for (int i = 0;i<recentlyCaptured.Count;i++)
+        {
+            recentlyCaptured[i].thisHealthBar.destroyAll();
+            Destroy(recentlyCaptured[i].gameObject);
+        }
+        recentlyCaptured = new List<piece>();
     }
 
     //reset distance measures for all tiles
@@ -147,24 +165,29 @@ public class battleManager : MonoBehaviour
         return nearest;
     }
 
-    public void undoPushes(pushedPiece[] pushedPieces)
+    public void undoPushes(List<pushedPiece> pushedPieces)
     {
         if (pushedPieces == null)
         {
             return;
         }
-        for (int i = 0;i<pushedPieces.Length;i++)
+        for (int i = 0;i<pushedPieces.Count;i++)
         {
-            if (pushedPieces[i].thisPiece.hypoTile != pushedPieces[i].startingTile)
+            if (pushedPieces[i] != null)
             {
-                bool wasExhausted = pushedPieces[i].thisPiece.hypoExhausted;
-                pushedPieces[i].thisPiece.moveToTile(pushedPieces[i].startingTile, false);
-                pushedPieces[i].thisPiece.hypoExhausted = wasExhausted;
-            }
-            if (pushedPieces[i].pushedInto != null)
-            {
-                pushedPieces[i].thisPiece.unTakeDamage(gm.pushDamage, false);
-                pushedPieces[i].pushedInto.unTakeDamage(gm.pushDamage, false);
+                if (pushedPieces[i].thisPiece.hypoTile != pushedPieces[i].startingTile)
+                {
+                    bool wasExhausted = pushedPieces[i].thisPiece.hypoExhausted;
+                    pushedPieces[i].thisPiece.hypoPushedTile = pushedPieces[i].startingTile;//to prevent using ability when undoing a push
+                    pushedPieces[i].thisPiece.moveToTile(pushedPieces[i].startingTile, false);
+                    pushedPieces[i].thisPiece.hypoPushedTile = null;
+                    pushedPieces[i].thisPiece.hypoExhausted = wasExhausted;
+                }
+                if (pushedPieces[i].pushedInto != null)
+                {
+                    pushedPieces[i].thisPiece.unTakeDamage(gm.pushDamage, false);
+                    pushedPieces[i].pushedInto.unTakeDamage(gm.pushDamage, false);
+                }
             }
         }
     }

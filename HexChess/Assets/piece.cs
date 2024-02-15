@@ -47,7 +47,7 @@ public class piece : MonoBehaviour
     public tile oldTile;
     public tile pushedTile;
     public tile hypoPushedTile;
-    public pushedPiece[] pushedPieces;
+    public List<pushedPiece> pushedPieces;
     public tile turnStartTile;
     public float moveRate;
     public piece capturing;
@@ -150,7 +150,7 @@ public class piece : MonoBehaviour
             {
                 //here, we will deal damage but not capture, so our resulting tile will not be the original target tile
                 attacking = targetTile.thisPiece;
-                targetTile = findEndingTile(attacking, real);//thisTile;//to be replaced
+                targetTile = findEndingTile(attacking, real);
             }
             else if (pushedTile == null &&targetTile.thisPiece != null && targetTile.thisPiece != this)
             {
@@ -177,14 +177,18 @@ public class piece : MonoBehaviour
                 targetTile = findEndingTile(targetTile.hypoPiece, real);
                 //enemy manager should handle the hypothetical damage and capturing
             }
-            if (hypoPushedTile == null)
-            {
-                hypoExhausted = true;
-            }
             possibleOldTile = hypoTile;
             possibleOldTile.hypoPiece = null;
             hypoTile = targetTile;
             hypoTile.hypoPiece = this;
+            if ((hypoPushedTile == null) && (hypoTile != possibleOldTile) && (hypoExhausted == false))//should not happen when pushed or undoing a move
+            {
+                useMoveAbility(false);
+            }
+            if (hypoPushedTile == null)
+            {
+                hypoExhausted = true;
+            }
         }
         if (champion)
         {
@@ -249,18 +253,19 @@ public class piece : MonoBehaviour
     public void arriveOnTile()
     {
         transform.position = newTile.transform.position;
-        newTile = null;
-        oldTile = null;
         setColor();
         if (capturing != null)
         {
             capturing.getCaptured(true);
+            thisTile.thisPiece = this;
             capturing = null;
         }
-        if (pushedTile == null)
+        if (pushedTile == null && newTile != oldTile)
         {
             useMoveAbility(true);//not if pushed
         }
+        newTile = null;
+        oldTile = null;
         pushedTile = null;
         bm.resetHighlighting();
         thisHealthBar.setPositions();
@@ -290,14 +295,7 @@ public class piece : MonoBehaviour
         {
             if (target.isInDirection(this, i, real))
             {
-                if (real)
-                {
-                    return target.thisTile.neighbors[i];
-                }
-                else
-                {
-                    return target.hypoTile.neighbors[i];
-                }
+                return target.realOrHypoTile(real).neighbors[i];
             }
         }
         return startTile;
@@ -330,7 +328,7 @@ public class piece : MonoBehaviour
         {
             hypoPushedTile = currTile.neighbors[direction];//needed for moveToTile
             piece otherPiece = hypoPushedTile.hypoPiece;
-            if (otherPiece == null && hypoPushedTile.hypoObstacle == 0)
+            if ((otherPiece == null || (otherPiece.hypoAlive == false)) && hypoPushedTile.hypoObstacle == 0)
             {
                 moveToTile(hypoPushedTile, real);
             }
@@ -341,7 +339,6 @@ public class piece : MonoBehaviour
             storePushedPieceInfo(currTile, otherPiece);
             hypoPushedTile = null;
         }
-        //in order to handle hypothetical pushes, i need to figure out how to undo them
     }
 
     public void collideWithPiece(piece other, bool real)
@@ -383,7 +380,12 @@ public class piece : MonoBehaviour
         {
             health += amount;
             thisHealthBar.setColors();
-            alive = true;
+            if (!alive)
+            {
+                alive = true;
+                thisTile.thisPiece = this;
+                updateTargeting(real);
+            }
         }
         else
         {
@@ -391,6 +393,7 @@ public class piece : MonoBehaviour
             if (!hypoAlive)
             {
                 hypoAlive = true;
+                hypoTile.hypoPiece = this;
                 updateTargeting(real);
             }
         }
@@ -436,8 +439,7 @@ public class piece : MonoBehaviour
         while (currTile.neighbors[dir] != null)
         {
             currTile = currTile.neighbors[dir];
-            if ((real && otherPiece.thisTile == currTile) ||
-                (!real && otherPiece.hypoTile == currTile))
+            if (otherPiece.realOrHypoTile(real) == currTile)
             {
                 return true;
             }
@@ -499,9 +501,10 @@ public class piece : MonoBehaviour
         if (real)
         {
             alive = false;
+            thisTile.thisPiece = null;
             updateTargeting(real);//removes all targeting
             bm.alivePieces.Remove(this);
-            thisHealthBar.destroyAll();
+            //thisHealthBar.destroyAll();
             if (champion)//shouldnt matter once battle end is implemented
             {
                 bm.generator.findDistsToChampions(real);
@@ -512,6 +515,7 @@ public class piece : MonoBehaviour
             }
             if (team == 0)
             {
+                thisHealthBar.destroyAll();
                 bm.em.playerPieces.Remove(this);
                 cost = Mathf.Min(cost * 2, 999);
                 moveToSlot(bm.um.findOpenSlot());
@@ -519,12 +523,16 @@ public class piece : MonoBehaviour
             if (team == 1)
             {
                 bm.em.enemyPieces.Remove(this);
-                Destroy(gameObject);
+                bm.recentlyCaptured.Add(this);
+                transform.position = gm.AWAY;
+                thisHealthBar.setPositions();
+                //Destroy(gameObject);
             }
         }
         else
         {
             hypoAlive = false;
+            hypoTile.hypoPiece = null;
             updateTargeting(real);//removes all hypoTargeting
         }
     }
@@ -617,12 +625,8 @@ public class piece : MonoBehaviour
     private void planPathsWithObtacles(bool real)
     {
         Queue q = new Queue();
-        tile activeTile = hypoTile;
+        tile activeTile =  realOrHypoTile(real);
         tile otherTile;
-        if (real)
-        {
-            activeTile = thisTile;
-        }
         q.Enqueue(activeTile);
         activeTile.distance = 0;
         while (q.Count > 0)
@@ -664,12 +668,8 @@ public class piece : MonoBehaviour
     private void planPathsWithoutObtacles(bool real)
     {
         Queue q = new Queue();
-        tile activeTile = hypoTile;
+        tile activeTile =  realOrHypoTile(real);
         tile otherTile;
-        if (real)
-        {
-            activeTile = thisTile;
-        }
         q.Enqueue(activeTile);
         activeTile.distance = 0;
         while (q.Count > 0)
@@ -707,11 +707,7 @@ public class piece : MonoBehaviour
     //depth first search of tiles that will only recurse in one direction at a time, blocked by unavailable tiles
     private void planPathsInALine(bool real)
     {
-        tile startingTile = hypoTile;
-        if (real)
-        {
-            startingTile = thisTile;
-        }
+        tile startingTile = realOrHypoTile(real);
         startingTile.distance = 0;
         tile activeTile;
         tile otherTile;

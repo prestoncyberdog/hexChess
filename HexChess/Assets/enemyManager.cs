@@ -52,9 +52,9 @@ public class enemyManager : MonoBehaviour
 
     public void takeTurn()
     {
-        findAllPieces(true);
         bm.changeTurn(1);
         copyHypoBoard();
+        findAllPieces(true);
         StartCoroutine(decideActions());
         StartCoroutine(moveAllPieces());
     }
@@ -435,6 +435,8 @@ public class enemyManager : MonoBehaviour
             bm.alivePieces[i].hypoHealth = bm.alivePieces[i].health;
             bm.alivePieces[i].hypoTile = bm.alivePieces[i].thisTile;
             bm.alivePieces[i].turnStartTile = bm.alivePieces[i].thisTile;
+
+            bm.alivePieces[i].pushedPieces = null;
             //copy targets
             bm.alivePieces[i].hypoTargets = new List<tile>();
             copyTileList(bm.alivePieces[i].targets, bm.alivePieces[i].hypoTargets);
@@ -568,7 +570,7 @@ public class enemyManager : MonoBehaviour
 
     public void createChampion()
     {
-        piece newPiece = Instantiate(gm.Pieces[1], new Vector3(1000, 1000, 0), Quaternion.identity).GetComponent<piece>();
+        piece newPiece = Instantiate(gm.Pieces[5], new Vector3(1000, 1000, 0), Quaternion.identity).GetComponent<piece>();
         newPiece.team = 1;
         newPiece.init();
         newPiece.champion = true;
@@ -676,6 +678,7 @@ public class enemyManager : MonoBehaviour
                 current.bestPiece.dealDamage(current.attackedPiece, false);
                 current.attackedPiece = null;
             }
+            current.bestPiece.pushedPieces = null;//shouldnt matter
 
             moveOrder.Add(current.bestPiece);
             current.bestPiece.intention = current.bestTile;

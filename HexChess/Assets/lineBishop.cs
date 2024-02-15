@@ -24,23 +24,25 @@ public class lineBishop : piece
     //push target piece when attacking
     public override void useAttackAbility(piece target, bool real)
     {
-        pushedPieces = null;
+        pushedPieces = new List<pushedPiece>();
         tile targetTile;
         for (int i = 0; i < 6; i++)
         {
             if (isInDirection(target, i, real))
             {
                 targetTile=target.realOrHypoTile(real);
-
                 targetTile.pushTile(i, real);
                 if (!real && targetTile.thisPushedPiece != null)
                 {
-                    pushedPieces = new pushedPiece[1];
-                    pushedPieces[0] = targetTile.thisPushedPiece;
+                    pushedPieces.Add(targetTile.thisPushedPiece);
                     targetTile.thisPushedPiece = null;
                 }
                 return;
             }
+        }
+        if (pushedPieces.Count == 0)
+        {
+            pushedPieces = null;
         }
     }
 
