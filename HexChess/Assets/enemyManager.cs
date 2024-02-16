@@ -17,6 +17,8 @@ public class enemyManager : MonoBehaviour
     public int groupSize;//the number of units that can be considered together
     public float spawnDelay;
     public float spawnDelayMax;
+    public float moveDelay;
+    public float moveDelayMax;
     public float endTurnDelay;
     public float endTurnDelayMax;
     public bool readyToEnd;
@@ -35,6 +37,7 @@ public class enemyManager : MonoBehaviour
 
         groupSize = 3;//maximum recursive depth / max number of pieces considered at a time
         spawnDelayMax = 1f;//delay after each new piece placement
+        moveDelayMax = .7f;//delay after each normal move
         endTurnDelayMax = 0.5f;//delay after last piece placement
         frameMax = 0.02f;//longest frame allowed for thinking, in seconds
         maxTurnStallTime = 2f;//max allowed total stalling time, after which group size will be reduced (repeatable within a turn)
@@ -126,10 +129,18 @@ public class enemyManager : MonoBehaviour
         float pieceScore = 0;
         for (int i = 0; i < playerPieces.Count; i++)
         {
+            if (!playerPieces[i].hypoAlive)
+            {
+                Debug.LogError("Evaluated position believing player piece was alive");
+            }
             pieceScore -= playerPieces[i].value * (1 + (playerPieces[i].hypoHealth * 1f/ playerPieces[i].maxHealth)) * .5f;
         }
         for (int i = 0; i < enemyPieces.Count; i++)
         {
+            if (!enemyPieces[i].hypoAlive)
+            {
+                Debug.LogError("Evaluated position believing enemy piece was alive");
+            }
             pieceScore += enemyPieces[i].value * (1 + (enemyPieces[i].hypoHealth * 1f/ enemyPieces[i].maxHealth)) * .5f;
         }
         //Debug.Log("Piece score: " + pieceScore * pieceWeight);
@@ -372,6 +383,10 @@ public class enemyManager : MonoBehaviour
                 {
                     spawnDelay -= Time.deltaTime;
                 }
+                else if (moveDelay > 0)
+                {
+                    moveDelay -= Time.deltaTime;
+                }
                 else if (moveOrder.Count > 0)
                 {
                     movePiece(moveOrder[0]);
@@ -383,6 +398,7 @@ public class enemyManager : MonoBehaviour
                 }
                 else if (readyToEnd)
                 {
+                    checkHypoBoard();
                     bm.changeTurn(0);
                 }
                 else
@@ -400,7 +416,6 @@ public class enemyManager : MonoBehaviour
             lastFrameTime = Time.realtimeSinceStartup;
             yield return null;
         }
-        checkHypoBoard();
     }
 
     public void movePiece(piece currentPiece)
@@ -411,6 +426,10 @@ public class enemyManager : MonoBehaviour
             {
                 currentPiece.moveToTile(currentPiece.intention, true);
                 StartCoroutine(currentPiece.moveTowardsNewTile());
+                if (moveOrder.Count >  1 || !readyToEnd)
+                {
+                    moveDelay = moveDelayMax;
+                }
             }
         }
         else //placing new piece
@@ -589,11 +608,11 @@ public class enemyManager : MonoBehaviour
     public IEnumerator decideActions()
     {
         readyToEnd = false;
-        turnGroupSize = groupSize - 1;//set lower so first decision can be made quickly
+        turnGroupSize = groupSize;// - 1;//set lower so first decision can be made quickly
         lastYieldTime = Time.realtimeSinceStartup;
         moveOrder = new List<piece>();
         orderPieces();
-        turnGroupSize++;//set to full value because we can think while pieces move now
+        //turnGroupSize++;//set to full value because we can think while pieces move now
         while (decideOrder.Count > 0)//choose a single piece action each loop
         {
             //create stack 
@@ -731,6 +750,7 @@ public class enemyManager : MonoBehaviour
         {
             //make hypo move
             decideOrder[current.pieceIndex].hypoExhausted = true;
+            decideOrder[current.pieceIndex].notMoving = true;
             current.previousTile = decideOrder[current.pieceIndex].hypoTile;
         }
         else

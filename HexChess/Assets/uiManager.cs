@@ -79,12 +79,12 @@ public class uiManager : MonoBehaviour
             {
                 bm.holdingPiece = false;
                 bm.selectedPiece.moveToTile(currTile, true);
-                bm.selectedPiece.arriveOnTile();
                 if (bm.selectedPiece.attacking != null)
                 {
                     bm.selectedPiece.dealDamage(bm.selectedPiece.attacking, true);
-                    bm.selectedPiece.attacking = null;
+                    //bm.selectedPiece.attacking = null;
                 }
+                bm.selectedPiece.arriveOnTile();
                 //bm.resetHighlighting();
             }
             else if (bm.selectedPiece != null && bm.holdingPiece && !bm.selectedPiece.alive && bm.playersTurn && 

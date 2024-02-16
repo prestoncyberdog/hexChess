@@ -45,7 +45,7 @@ public class gameManager : MonoBehaviour
         }
 
         champions = new piece[2];
-        newPiece = Instantiate(Pieces[1], AWAY, Quaternion.identity).GetComponent<piece>();
+        newPiece = Instantiate(Pieces[5], AWAY, Quaternion.identity).GetComponent<piece>();
         newPiece.team = 0;
         newPiece.init();
         newPiece.champion = true;

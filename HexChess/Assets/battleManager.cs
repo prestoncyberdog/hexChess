@@ -151,6 +151,7 @@ public class battleManager : MonoBehaviour
         else
         {
             lastMove.movedPiece.hypoExhausted = false;
+            lastMove.movedPiece.notMoving = false;
         }
     }
 

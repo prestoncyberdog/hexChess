@@ -19,8 +19,8 @@ public class healthBar : MonoBehaviour
         colors = new Color[4];
         colors[0] = new Color(0,.7f,0);
         colors[1] = new Color(1,0,0);
-        colors[2] = new Color(0,0,0, 0.3f); //for missing health 
-        colors[3] = new Color(0,0,0, 0.3f); //for missing health 
+        colors[2] = new Color(0,0,0, 0.2f); //for missing health 
+        colors[3] = new Color(0,0,0, 0.2f); //for missing health 
 
         createPips();
         setPositions();

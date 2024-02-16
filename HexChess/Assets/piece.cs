@@ -50,6 +50,7 @@ public class piece : MonoBehaviour
     public List<pushedPiece> pushedPieces;
     public tile turnStartTile;
     public float moveRate;
+    public float pushMoveRate;
     public piece capturing;
     public piece attacking;
     public bool notMoving;
@@ -59,7 +60,8 @@ public class piece : MonoBehaviour
     {
         gm = GameObject.FindGameObjectWithTag("gameManager").GetComponent<gameManager>();
         bm = gm.bm;
-        moveRate = 5 * (2f - team);
+        pushMoveRate = 5;
+        moveRate = 5;
         playerColor = new Color(0.2f, 0.2f, 1f);
         exhaustedPlayerColor = playerColor;// new Color(0.4f, 0.4f, 1f);
         enemyColor = new Color(1f, 0.2f, 0.2f);
@@ -215,6 +217,16 @@ public class piece : MonoBehaviour
         exhausted = true;
         bm.resetHighlighting();
         exhausted = temp;
+        float moveRateThisMovement = moveRate;
+        if (pushedTile != null)
+        {
+            moveRateThisMovement = pushMoveRate;
+        }
+        else if (team == 0)
+        {
+            moveRateThisMovement = moveRate * 2;
+        }
+
         bm.movingPieces++;
         stepPath = new List<tile>();
         if (attacking != null)
@@ -236,7 +248,7 @@ public class piece : MonoBehaviour
         while (stepPath.Count > 0)
         {
             Vector3 toNextTile = stepPath[0].transform.position - transform.position;
-            if (moveRate * Time.deltaTime > toNextTile.magnitude)//here, we've arrived at a waypoint
+            if (moveRateThisMovement * Time.deltaTime > toNextTile.magnitude)//here, we've arrived at a waypoint
             {
                 if (attacking != null && stepPath[0] == attacking.thisTile)
                 {
@@ -246,12 +258,17 @@ public class piece : MonoBehaviour
                 if (pushedTile != null && pushedTile != newTile && stepPath[0] == pushedTile)
                 {
                     collideWithPiece(pushedTile.thisPiece, true);
+                    if (!alive)
+                    {
+                        bm.movingPieces--;
+                        yield break;
+                    }
                 }
                 stepPath.RemoveAt(0);
             }
             else
             {
-                transform.position = transform.position + toNextTile.normalized * moveRate * Time.deltaTime;
+                transform.position = transform.position + toNextTile.normalized * moveRateThisMovement * Time.deltaTime;
                 thisHealthBar.setPositions();
             }
             yield return null;
@@ -340,7 +357,7 @@ public class piece : MonoBehaviour
                 newTile = pushedTile;
                 moveToTile(pushedTile, real);
             }
-            else // here we've bumber into pushedTile
+            else // here we've bumped into pushedTile
             {
                 newTile = thisTile;
                 otherPiece = pushedTile.thisPiece;
@@ -422,7 +439,7 @@ public class piece : MonoBehaviour
             hypoHealth += amount;
             if (!hypoAlive)
             {
-                unGetCaptured(thisTile, real);
+                unGetCaptured(hypoTile, real);
             }
         }
     }
