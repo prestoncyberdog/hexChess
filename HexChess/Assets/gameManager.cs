@@ -36,7 +36,7 @@ public class gameManager : MonoBehaviour
         
         playerPieces = new List<piece>();
         piece newPiece;
-        for (int i = 0; i < 8; i++)
+        for (int i = 0; i < 5; i++)
         {
             newPiece = Instantiate(Pieces[Random.Range(0,Pieces.Length)], AWAY, Quaternion.identity).GetComponent<piece>();
             newPiece.team = 0;
@@ -45,7 +45,7 @@ public class gameManager : MonoBehaviour
         }
 
         champions = new piece[2];
-        newPiece = Instantiate(Pieces[5], AWAY, Quaternion.identity).GetComponent<piece>();
+        newPiece = Instantiate(Pieces[1], AWAY, Quaternion.identity).GetComponent<piece>();
         newPiece.team = 0;
         newPiece.init();
         newPiece.champion = true;

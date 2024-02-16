@@ -161,7 +161,7 @@ public class uiManager : MonoBehaviour
 
     public void createTeamSlots()
     {
-        teamlist = new teamSlot[12];
+        teamlist = new teamSlot[6];
         float listSpacing = 1.3f;
         float listSpacingVert = 1.3f;
         int rowLength = 3;

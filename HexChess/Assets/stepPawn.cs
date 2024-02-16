@@ -8,7 +8,7 @@ public class stepPawn : piece
     {
         moveType = STEP;
         moveRange = 1;
-        cost = 10;
+        cost = 1;
         maxHealth = 2;
         damage = 1;
         qualityBonus = 0;

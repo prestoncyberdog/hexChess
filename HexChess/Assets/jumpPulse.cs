@@ -8,8 +8,10 @@ public class jumpPulse : piece
     {
         moveType = JUMP;
         moveRange = 2;
-        cost = 20;
-        qualityBonus = 10;
+        cost = 6;
+        maxHealth = 4;
+        damage = 1;
+        qualityBonus = 0;
 
         transform.localScale = new Vector3(.5f, .5f, 1);
     }

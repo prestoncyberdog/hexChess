@@ -8,9 +8,9 @@ public class lineBishop : piece
     {
         moveType = LINE;
         moveRange = 3;
-        cost = 25;
-        maxHealth = 12;
-        damage = 3;
+        cost = 6;
+        maxHealth = 5;
+        damage = 1;
         qualityBonus = 0;
 
         transform.localScale = new Vector3(2.4f, 2.4f, 1);

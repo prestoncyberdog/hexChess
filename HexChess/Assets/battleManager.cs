@@ -67,11 +67,11 @@ public class battleManager : MonoBehaviour
         playsRemaining = 1;
         if (playersTurn)
         {
-            playerEnergy += 10;
+            playerEnergy += 2;
         }
         else if (!playersTurn)
         {
-            enemyEnergy += 10;
+            enemyEnergy += 2;
         }
     }
 

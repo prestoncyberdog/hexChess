@@ -8,7 +8,9 @@ public class jumpKnight : piece
     {
         moveType = JUMP;
         moveRange = 2;
-        cost = 20;
+        cost = 4;
+        maxHealth = 4;
+        damage = 2;
         qualityBonus = 0;
 
         transform.localScale = new Vector3(.6f, .6f, 1);

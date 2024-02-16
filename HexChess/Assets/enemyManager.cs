@@ -68,7 +68,7 @@ public class enemyManager : MonoBehaviour
     {
         //these values can balance how much the ai values different measures
         float championWeight = 2;//bonus multiplier on piece value
-        float pieceWeight = 1;
+        float pieceWeight = 5;
         float targetingWeight = 0.5f;
         float positionWeight = 0.2f;
         float notMovingPenalty = .5f;
