@@ -35,6 +35,7 @@ public class piece : MonoBehaviour
     public bool hypoAlive;
     public List<tile> hypoTargets;
 
+    public string pieceName;
     public int health;
     public int maxHealth;
     public int damage;
@@ -75,7 +76,10 @@ public class piece : MonoBehaviour
         if (thisTile != null)
         {
             alive = true;
-            bm.alivePieces.Add(this);
+            if (!bm.alivePieces.Contains(this))
+            {
+                bm.alivePieces.Add(this);
+            }
         }
         specificInit();
         value = cost + qualityBonus;//may want to randomize this slightly?
@@ -557,6 +561,7 @@ public class piece : MonoBehaviour
             thisTile.thisPiece = null;
             updateTargeting(real);//removes all targeting
             bm.alivePieces.Remove(this);
+            bm.recentlyCaptured.Add(this);
             if (champion)//shouldnt matter once battle end is implemented
             {
                 bm.generator.findDistsToChampions(real);
@@ -577,9 +582,9 @@ public class piece : MonoBehaviour
                 bm.em.enemyPieces.Remove(this);
                 //Destroy(gameObject);
             }
-            bm.recentlyCaptured.Add(this);
             transform.position = gm.AWAY;
             thisHealthBar.setPositions();
+            bm.resetHighlighting();
         }
         else
         {

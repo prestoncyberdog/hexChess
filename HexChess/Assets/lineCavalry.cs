@@ -6,9 +6,10 @@ public class lineCavalry : piece
 {
     public override void specificInit()
     {
+        pieceName = "Knight";
         moveType = LINE;
         moveRange = 2;
-        cost = 4;
+        cost = 5;
         maxHealth = 4;
         damage = 2;
         qualityBonus = 0;

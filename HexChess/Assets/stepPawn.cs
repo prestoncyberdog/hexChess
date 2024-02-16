@@ -6,6 +6,7 @@ public class stepPawn : piece
 {
     public override void specificInit()
     {
+        pieceName = "Soldier";
         moveType = STEP;
         moveRange = 1;
         cost = 1;

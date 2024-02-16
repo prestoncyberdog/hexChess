@@ -6,11 +6,12 @@ public class jumpPulse : piece
 {
     public override void specificInit()
     {
+        pieceName = "Roc";
         moveType = JUMP;
         moveRange = 2;
         cost = 6;
         maxHealth = 4;
-        damage = 1;
+        damage = 0;
         qualityBonus = 0;
 
         transform.localScale = new Vector3(.5f, .5f, 1);

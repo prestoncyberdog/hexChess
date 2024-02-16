@@ -56,8 +56,8 @@ public class enemyManager : MonoBehaviour
     public void takeTurn()
     {
         bm.changeTurn(1);
-        copyHypoBoard();
         findAllPieces(true);
+        copyHypoBoard();
         StartCoroutine(decideActions());
         StartCoroutine(moveAllPieces());
     }
@@ -585,7 +585,7 @@ public class enemyManager : MonoBehaviour
 
     public void createChampion()
     {
-        piece newPiece = Instantiate(gm.Pieces[5], new Vector3(1000, 1000, 0), Quaternion.identity).GetComponent<piece>();
+        piece newPiece = Instantiate(gm.Pieces[gm.chooseRandomChampion()], new Vector3(1000, 1000, 0), Quaternion.identity).GetComponent<piece>();
         newPiece.team = 1;
         newPiece.init();
         newPiece.champion = true;

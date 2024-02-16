@@ -9,6 +9,7 @@ public class uiManager : MonoBehaviour
     public battleManager bm;
 
     public teamSlot[] teamlist;
+    public pieceInfoManager pm;
 
     public GameObject energy;
     public Text energyText;
@@ -22,10 +23,12 @@ public class uiManager : MonoBehaviour
     {
         gm = GameObject.FindGameObjectWithTag("gameManager").GetComponent<gameManager>();
         bm = gm.bm;
+        pm = gameObject.GetComponent<pieceInfoManager>();
 
         createTeamSlots();
         fillTeamSlots();
         createText();
+        pm.init();
     }
 
     void Update()
@@ -52,6 +55,7 @@ public class uiManager : MonoBehaviour
                 {
                     bm.holdingPiece = true;
                 }
+                pm.updateText();
             }
         }
 
@@ -97,7 +101,31 @@ public class uiManager : MonoBehaviour
         }
     }
 
-//routine checks for inputs each frame
+    public void teamSlotMouseOver(teamSlot currTeamSlot)
+    {
+        if (Input.GetMouseButtonDown(0))
+        {
+            if (currTeamSlot.thisPiece != null)//selecting piece
+            {
+                bm.selectedPiece = currTeamSlot.thisPiece;
+                bm.justClicked = true;
+                bm.resetHighlighting();
+                bm.holdingPiece = true;
+                pm.updateText();
+            }
+        }
+
+        if (Input.GetMouseButtonUp(0))//moving pieces between slots
+        {
+            if (bm.selectedPiece != null && bm.holdingPiece && !bm.selectedPiece.alive)
+            {
+                bm.selectedPiece.moveToSlot(currTeamSlot);
+                resetHighlighting();
+            }
+        }
+    }
+
+    //routine checks for inputs each frame
     public void checkInputs()
     {
         if (Input.GetKeyDown(KeyCode.Space) && bm.playersTurn)

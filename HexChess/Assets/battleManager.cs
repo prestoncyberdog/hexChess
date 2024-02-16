@@ -83,6 +83,11 @@ public class battleManager : MonoBehaviour
         }
         while (recentlyCaptured.Count > 0)
         {
+            if (alivePieces.Contains(recentlyCaptured[0]))
+            {
+                alivePieces.Remove(recentlyCaptured[0]);
+                Debug.LogError("Recently captured piece still listed as being alive");
+            }
             if (recentlyCaptured[0].team == 0)
             {
                 recentlyCaptured[0].cost = Mathf.Min(recentlyCaptured[0].cost * 2, 999);

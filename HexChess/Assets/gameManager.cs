@@ -45,11 +45,17 @@ public class gameManager : MonoBehaviour
         }
 
         champions = new piece[2];
-        newPiece = Instantiate(Pieces[1], AWAY, Quaternion.identity).GetComponent<piece>();
+        newPiece = Instantiate(Pieces[chooseRandomChampion()], AWAY, Quaternion.identity).GetComponent<piece>();
         newPiece.team = 0;
         newPiece.init();
         newPiece.champion = true;
         champions[0] = newPiece;
+    }
+
+    public int chooseRandomChampion()
+    {
+        int[] options = new int[]{1,5,6,7};
+        return options[Random.Range(0,options.Length)];
     }
 
     void Update()

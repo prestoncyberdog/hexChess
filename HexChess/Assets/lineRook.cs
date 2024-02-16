@@ -6,6 +6,7 @@ public class lineRook : piece
 {
     public override void specificInit()
     {
+        pieceName = "Wolf";
         moveType = LINE;
         moveRange = 4;
         cost = 4;

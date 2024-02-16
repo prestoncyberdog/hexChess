@@ -6,6 +6,7 @@ public class lineBishop : piece
 {
     public override void specificInit()
     {
+        pieceName = "Ram";
         moveType = LINE;
         moveRange = 3;
         cost = 6;

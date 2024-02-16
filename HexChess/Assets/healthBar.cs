@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class healthBar : MonoBehaviour
 {
@@ -10,6 +11,10 @@ public class healthBar : MonoBehaviour
     public piece owner;
     public Transform[] pips;
     public Color[] colors;
+
+    public GameObject damage;
+    public Text damageText;
+    Vector3 damagePos;
 
     void Start()
     {
@@ -23,6 +28,7 @@ public class healthBar : MonoBehaviour
         colors[3] = new Color(0,0,0, 0.2f); //for missing health 
 
         createPips();
+        createText();
         setPositions();
         setColors();
         
@@ -53,6 +59,8 @@ public class healthBar : MonoBehaviour
                 nextPos = nextPos + new Vector3(xjump, 0, 0);
             }
         }
+
+        updateText();
     }
 
     public void setColors()
@@ -76,6 +84,7 @@ public class healthBar : MonoBehaviour
         {
             pips[i].gameObject.SetActive(false);
         }
+        hideText();
         gameObject.SetActive(false);
     }
 
@@ -86,6 +95,7 @@ public class healthBar : MonoBehaviour
         {
             pips[i].gameObject.SetActive(true);
         }
+        setText();
     }
 
     public void createPips()
@@ -105,11 +115,53 @@ public class healthBar : MonoBehaviour
         {
             Destroy(pips[i].gameObject);
         }
+        hideText();
+        Destroy(damage);
         Destroy(gameObject);
     }
 
     void Update()
     {
         
+    }
+
+    public void createText()
+    {
+        damage = new GameObject("damage");
+        damage.transform.SetParent(FindObjectOfType<Canvas>().transform);
+        damageText = damage.AddComponent<Text>();
+        damageText.font = Resources.GetBuiltinResource(typeof(Font), "Arial.ttf") as Font;
+        damage.layer = 5;
+        damageText.alignment = TextAnchor.MiddleCenter;
+        damageText.color = new Color(0, 0, 0);
+        damageText.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, 100);
+        damageText.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, 400);
+        damageText.rectTransform.anchorMin = new Vector2(0, 0);
+        damageText.rectTransform.anchorMax = new Vector2(0, 0);
+
+        updateText();
+    }
+
+    public void updateText()
+    {
+        Camera c = Camera.main;
+
+        Vector3 startPoint = owner.transform.position + new Vector3(-5.5f, .5f, 0);
+
+        damagePos = c.WorldToScreenPoint(owner.transform.position + new Vector3(-1f, -1f, 0) * bm.generator.tileScale);
+        damageText.rectTransform.anchoredPosition = damagePos;
+        damageText.fontSize = Mathf.FloorToInt(24 * (AspectUtility.screenWidth / 1612f));
+
+        setText();
+    }
+
+    public void setText()
+    {
+        damageText.text = "" + owner.damage;
+    }
+
+    public void hideText()
+    {
+        damageText.text = "";
     }
 }

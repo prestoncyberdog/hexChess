@@ -6,6 +6,7 @@ public class jumpKnightLong : piece
 {
     public override void specificInit()
     {
+        pieceName = "Griffin";
         moveType = JUMP;
         moveRange = 3;
         cost = 5;
