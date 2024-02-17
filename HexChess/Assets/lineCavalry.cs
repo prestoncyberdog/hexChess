@@ -9,7 +9,7 @@ public class lineCavalry : piece
         pieceName = "Knight";
         moveType = LINE;
         moveRange = 2;
-        cost = 5;
+        cost = 6;
         maxHealth = 4;
         damage = 2;
         qualityBonus = 0;

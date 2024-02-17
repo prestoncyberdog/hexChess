@@ -54,10 +54,10 @@ public class battleManager : MonoBehaviour
 
     public void changeTurn(int whosTurn)
     {
-        em.unexhaustPieces();
         clearUndoStorage();
         playersTurn = (whosTurn == 0);
         giveTurnBonuses(whosTurn);
+        em.unexhaustPieces();
         resetHighlighting();
     }
 
@@ -83,19 +83,22 @@ public class battleManager : MonoBehaviour
         }
         while (recentlyCaptured.Count > 0)
         {
-            if (alivePieces.Contains(recentlyCaptured[0]))
+            while (alivePieces.Contains(recentlyCaptured[0]))
             {
                 alivePieces.Remove(recentlyCaptured[0]);
                 Debug.LogError("Recently captured piece still listed as being alive");
             }
             if (recentlyCaptured[0].team == 0)
             {
-                recentlyCaptured[0].cost = Mathf.Min(recentlyCaptured[0].cost * 2, 999);
+                recentlyCaptured[0].cost = Mathf.Max(Mathf.Min(recentlyCaptured[0].cost * 2, 999), 1);
                 recentlyCaptured[0].moveToSlot(um.findOpenSlot());
             }
             if (recentlyCaptured[0].team == 1)
             {
+                recentlyCaptured[0].alive = false;
+                recentlyCaptured[0].hypoAlive = false;//this matters, or else the piece gets added to alivePieces again because unity is dumb
                 Destroy(recentlyCaptured[0].gameObject);
+                Destroy(recentlyCaptured[0]);
             }
             recentlyCaptured.RemoveAt(0);
         }
@@ -119,6 +122,7 @@ public class battleManager : MonoBehaviour
         {
             alivePieces.Add(newPiece);
         }
+        newPiece.useSummonAbility(true);
         resetHighlighting();
 
         if (newPiece.team == 0 && !newPiece.champion)
@@ -163,6 +167,7 @@ public class battleManager : MonoBehaviour
     public void undoPlacement(reversableMove placement, bool real)
     {
         tile placedTile = placement.movedPiece.realOrHypoTile(real);
+        placement.movedPiece.undoSummonAbility(real);
         placement.movedPiece.getCaptured(real);
         List<piece> retargeted = new List<piece>();
         retargeted.Add(placement.movedPiece);

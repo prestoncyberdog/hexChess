@@ -8,8 +8,8 @@ public class lineBishop : piece
     {
         pieceName = "Ram";
         moveType = LINE;
-        moveRange = 3;
-        cost = 6;
+        moveRange = 2;
+        cost = 5;
         maxHealth = 5;
         damage = 1;
         qualityBonus = 0;

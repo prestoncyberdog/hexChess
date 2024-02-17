@@ -9,7 +9,7 @@ public class stepPawn : piece
         pieceName = "Soldier";
         moveType = STEP;
         moveRange = 1;
-        cost = 1;
+        cost = 0;
         maxHealth = 2;
         damage = 1;
         qualityBonus = 0;

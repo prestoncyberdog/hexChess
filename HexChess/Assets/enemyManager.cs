@@ -277,6 +277,7 @@ public class enemyManager : MonoBehaviour
             {
                 //place piece on hypo board
                 currentPiece.placePiece(spawnTiles[i], false);
+                currentPiece.useSummonAbility(false);
                 //evaluate
                 currentVal = evaluatePosition();
                 if (currentVal > bestVal)
@@ -296,6 +297,7 @@ public class enemyManager : MonoBehaviour
             //place piece on hypo board
             currentPiece.hypoAlive = true;
             currentPiece.placePiece(bestTile, false);
+            currentPiece.useSummonAbility(false);
             currentPiece.payEnergyCost();
             //plan to place piece in move order
             moveOrder.Add(currentPiece);
@@ -316,7 +318,7 @@ public class enemyManager : MonoBehaviour
         //find piece that can move which is closest to the players champion
         for (int i = 0; i < enemyPieces.Count; i++)
         {
-            if (enemyPieces[i].hypoExhausted == false && enemyPieces[i].notMoving == false)
+            if (enemyPieces[i].hypoExhausted == false && enemyPieces[i].notMoving == false && enemyPieces[i].hypoAlive == true)
             {
                 if (firstPiece == null)
                 {
@@ -349,6 +351,7 @@ public class enemyManager : MonoBehaviour
                 activeTile.hypoPiece.team == 1 && 
                 activeTile.hypoPiece.hypoExhausted == false && 
                 activeTile.hypoPiece.notMoving == false && 
+                activeTile.hypoPiece.hypoAlive == true &&
                 !decideOrder.Contains(activeTile.hypoPiece))
             {
                 //here we have a nearby enemy(ai controlled) piece which has not yet moved/decided
@@ -448,7 +451,6 @@ public class enemyManager : MonoBehaviour
         for (int i = 0; i < bm.alivePieces.Count; i++)
         {
             bm.alivePieces[i].hypoAlive = bm.alivePieces[i].alive;
-            bm.alivePieces[i].hypoExhausted = false;
             bm.alivePieces[i].hypoHealth = bm.alivePieces[i].health;
             bm.alivePieces[i].hypoTile = bm.alivePieces[i].thisTile;
             bm.alivePieces[i].turnStartTile = bm.alivePieces[i].thisTile;
@@ -538,7 +540,7 @@ public class enemyManager : MonoBehaviour
         for (int i = 0;i < pieceGameObjects.Length;i++)
         {
             currentPiece = pieceGameObjects[i].GetComponent<piece>();
-            if ((real && currentPiece.alive) || (!real && currentPiece.hypoAlive))
+            if (currentPiece.gameObject != null && ((real && currentPiece.alive) || (!real && currentPiece.hypoAlive)))
             {
                 if (real)
                 {
@@ -562,6 +564,7 @@ public class enemyManager : MonoBehaviour
         for (int i = 0;i< bm.alivePieces.Count;i++)
         {
             bm.alivePieces[i].exhausted = false;
+            bm.alivePieces[i].hypoExhausted = false;
             bm.alivePieces[i].notMoving = false;
             bm.alivePieces[i].setColor();
         }

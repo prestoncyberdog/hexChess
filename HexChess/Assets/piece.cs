@@ -82,7 +82,7 @@ public class piece : MonoBehaviour
             }
         }
         specificInit();
-        value = cost + qualityBonus;//may want to randomize this slightly?
+        value = Mathf.Max((cost + qualityBonus), 1);//may want to randomize this slightly?
         health = maxHealth;
         hypoHealth = health;
         transform.localScale = new Vector3(transform.localScale.x * bm.generator.tileScale, transform.localScale.y * bm.generator.tileScale, 1);
@@ -402,8 +402,8 @@ public class piece : MonoBehaviour
     //this reverses our hypothetical attack
     public void unDealDamage(piece target, bool real)
     {
-        target.unTakeDamage(damage, real);
         undoAttackAbility(real);
+        target.unTakeDamage(damage, real);
     }
 
     public void takeDamage(int amount, bool real)
@@ -433,7 +433,7 @@ public class piece : MonoBehaviour
         {
             health += amount;
             thisHealthBar.setColors();
-            if (!alive)//come back to life from purgatory
+            if (!alive)//come back to life
             {
                 unGetCaptured(thisTile, real);
             }

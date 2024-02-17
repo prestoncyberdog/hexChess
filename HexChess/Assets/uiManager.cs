@@ -66,7 +66,7 @@ public class uiManager : MonoBehaviour
             {
                 bm.selectedPiece.moveToTile(currTile, true);
                 StartCoroutine(bm.selectedPiece.moveTowardsNewTile());
-                bm.resetTiles();
+                //bm.resetTiles();
                 //bm.resetHighlighting();
             }
             if(bm.selectedPiece != null && !bm.selectedPiece.alive && bm.playersTurn && currTile.isValidPlacement(0, true) && bm.selectedPiece.canAfford() && bm.movingPieces == 0)//placing piece

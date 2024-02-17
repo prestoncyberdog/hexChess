@@ -71,7 +71,7 @@ SpriteRenderer:
   m_SortingLayerID: 1179710421
   m_SortingLayer: 4
   m_SortingOrder: 0
-  m_Sprite: {fileID: 21300000, guid: 9315f58d59d5439428e623ce575a90b1, type: 3}
+  m_Sprite: {fileID: 21300000, guid: cb5f39f55d97ce04ebdc8a088236a10e, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -94,3 +94,44 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 150b693f6a179c94d8a9f62ffc8d6c89, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  gm: {fileID: 0}
+  bm: {fileID: 0}
+  playerColor: {r: 0, g: 0, b: 0, a: 0}
+  exhaustedPlayerColor: {r: 0, g: 0, b: 0, a: 0}
+  enemyColor: {r: 0, g: 0, b: 0, a: 0}
+  exhaustedEnemyColor: {r: 0, g: 0, b: 0, a: 0}
+  moveType: 0
+  moveRange: 0
+  minAttackRange: 0
+  value: 0
+  cost: 0
+  qualityBonus: 0
+  team: 0
+  champion: 0
+  intention: {fileID: 0}
+  thisTile: {fileID: 0}
+  exhausted: 0
+  alive: 0
+  targets: []
+  hypoTile: {fileID: 0}
+  hypoExhausted: 0
+  hypoAlive: 0
+  hypoTargets: []
+  pieceName: 
+  health: 0
+  maxHealth: 0
+  damage: 0
+  hypoHealth: 0
+  thisHealthBar: {fileID: 0}
+  thisSlot: {fileID: 0}
+  newTile: {fileID: 0}
+  oldTile: {fileID: 0}
+  pushedTile: {fileID: 0}
+  hypoPushedTile: {fileID: 0}
+  turnStartTile: {fileID: 0}
+  moveRate: 0
+  pushMoveRate: 0
+  capturing: {fileID: 0}
+  attacking: {fileID: 0}
+  notMoving: 0
+  stepPath: []
