@@ -82,7 +82,7 @@ public class piece : MonoBehaviour
             }
         }
         specificInit();
-        value = Mathf.Max((cost + qualityBonus), 1);//may want to randomize this slightly?
+        value = Mathf.Max((cost + qualityBonus + 1), 1);//may want to randomize this slightly?
         health = maxHealth;
         hypoHealth = health;
         transform.localScale = new Vector3(transform.localScale.x * bm.generator.tileScale, transform.localScale.y * bm.generator.tileScale, 1);
@@ -144,9 +144,6 @@ public class piece : MonoBehaviour
             hypoTile.hypoPiece = this;
         }
         updateTargeting(real);
-        List<piece> retargeted = new List<piece>();
-        retargeted.Add(this);
-        targetTile.updateTargeting(real, ref retargeted);
         if (real)
         {
             bm.resetHighlighting();
@@ -207,9 +204,8 @@ public class piece : MonoBehaviour
         {
             bm.generator.findDistsToChampions(real);
         }
-        updateTargeting(real);
         List<piece> retargeted = new List<piece>();
-        retargeted.Add(this);
+        updateTargeting(real, ref retargeted);
         possibleOldTile.updateTargeting(real, ref retargeted);
         targetTile.updateTargeting(real, ref retargeted);
     }
@@ -303,6 +299,7 @@ public class piece : MonoBehaviour
         {
             capturing.getCaptured(true);
             thisTile.thisPiece = this;
+            updateTargeting(true);
             capturing = null;
         }
         newTile = null;
@@ -533,6 +530,17 @@ public class piece : MonoBehaviour
     //updates target list and targetedBy list for each affected tile
     public void updateTargeting(bool real)
     {
+        List<piece> retargeted = new List<piece>();
+        updateTargeting(real, ref retargeted);
+    }
+
+    //updates target list and targetedBy list for each affected tile
+    public void updateTargeting(bool real, ref List<piece> retargeted)
+    {
+        if (retargeted != null && retargeted.Contains(this))
+        {
+            return;
+        }
         if (real)
         {
             while (targets.Count > 0)
@@ -549,7 +557,13 @@ public class piece : MonoBehaviour
                 hypoTargets.RemoveAt(0);
             }
         }
+        if (realOrHypoTile(real) == null)
+        {
+            return;
+        }
         findAllCandidates(real);
+        retargeted.Add(this);
+        realOrHypoTile(real).updateTargeting(real, ref retargeted);
     }
 
     //causes this piece to die, has nothing to do with capturing piece
@@ -647,6 +661,18 @@ public class piece : MonoBehaviour
         {
             this.GetComponent<SpriteRenderer>().color = exhaustedEnemyColor;
         }
+    }
+
+    public void deleteInfo()
+    {
+        thisTile = null;
+        hypoTile = null;
+        pushedTile = null;
+        hypoPushedTile = null;
+        targets = new List<tile>();
+        hypoTargets = new List<tile>();
+        health = maxHealth;
+        hypoHealth = maxHealth;
     }
 
     public void highlightCandidates()

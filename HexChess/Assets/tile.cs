@@ -87,8 +87,8 @@ public class tile : MonoBehaviour
         {
             if (oldPieces[i].moveType != piece.JUMP && oldPieces[i].moveRange > 1 && !retargeted.Contains(oldPieces[i]))//jump or single move targeting is unaffected
             {
-                retargeted.Add(oldPieces[i]);
-                oldPieces[i].updateTargeting(real);
+                //retargeted.Add(oldPieces[i]);
+                oldPieces[i].updateTargeting(real, ref retargeted);
             }
         }
     }

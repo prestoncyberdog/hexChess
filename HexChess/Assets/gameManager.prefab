@@ -54,6 +54,7 @@ MonoBehaviour:
   - {fileID: 1407340451234628897, guid: 80b366aa27f61514cb45c5a8c786bfcb, type: 3}
   - {fileID: 6392513154482771593, guid: 18f13ff631fc1fd46928e7cdca2c6e82, type: 3}
   - {fileID: 8495713364745786182, guid: a3f72a4024033ed48b8ca24bcc0943e5, type: 3}
+  - {fileID: 7868086088779864826, guid: 9d42674a7a3d71e48b70f956d3f07eba, type: 3}
   EnemyManager: {fileID: 3087165918241259408, guid: 113d1f631c9d9544e997ace5517c582d,
     type: 3}
   UIManager: {fileID: 8196796942768952676, guid: 90b2dc725f5a56e44b41fe5f962d3e93,

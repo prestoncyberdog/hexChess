@@ -91,6 +91,7 @@ public class battleManager : MonoBehaviour
             if (recentlyCaptured[0].team == 0)
             {
                 recentlyCaptured[0].cost = Mathf.Max(Mathf.Min(recentlyCaptured[0].cost * 2, 999), 1);
+                recentlyCaptured[0].deleteInfo();
                 recentlyCaptured[0].moveToSlot(um.findOpenSlot());
             }
             if (recentlyCaptured[0].team == 1)
@@ -227,9 +228,10 @@ public class battleManager : MonoBehaviour
 
     public void resetTargets(bool real)
     {
+        List<piece> retargeted = new List<piece>();
         for(int i = 0;i< alivePieces.Count;i++)
         {
-            alivePieces[i].updateTargeting(real);
+            alivePieces[i].updateTargeting(real, ref retargeted);
         }
     }
 
