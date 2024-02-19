@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -34,6 +34,10 @@ public class piece : MonoBehaviour
     public bool hypoExhausted;
     public bool hypoAlive;
     public List<tile> hypoTargets;
+    public List<tile> abilityTargets;
+    public List<tile> hypoAbilityTargets;
+    public float potentialIncomingDamage;
+    public float pieceTargetingPenalty;
 
     public string pieceName;
     public int health;
@@ -56,6 +60,13 @@ public class piece : MonoBehaviour
     public piece attacking;
     public bool notMoving;
     public List<tile> stepPath;
+
+    public bool hasActivatedAbility;
+    public bool activatingAbility;
+    public bool usedActivatedAbility;
+    public string abilityText;
+    public float abilityFearScore;
+    public int desiredRange;
 
     public void init()
     {
@@ -112,6 +123,17 @@ public class piece : MonoBehaviour
 
     public virtual void useSummonAbility(bool real){}
     public virtual void undoSummonAbility(bool real){}
+
+    public virtual void useActivatedAbility(tile target, bool real){}
+    public virtual void undoActivatedAbility(bool real){}
+    public virtual void findAbilityTargets(bool real){}
+    public virtual bool isValidAbilityTarget(tile target, bool real){return false;}
+
+    public virtual void useKillAbility(bool real){}
+    public virtual void undoKillAbility(bool real){}
+
+    public virtual void useDeathAbility(bool real){}
+    public virtual void undoDeathAbility(bool real){}
 
     //does not include exhausting new pieces
     public void placePiece(tile targetTile, bool real)
@@ -252,7 +274,7 @@ public class piece : MonoBehaviour
             {
                 if (attacking != null && stepPath[0] == attacking.thisTile)
                 {
-                    dealDamage(attacking, true);
+                    dealDamage(attacking, damage, true);
                     //attacking = null;
                 }
                 if (pushedTile != null && pushedTile != newTile && stepPath[0] == pushedTile)
@@ -390,17 +412,17 @@ public class piece : MonoBehaviour
         other.takeDamage(gm.pushDamage, real);
     }
 
-    public void dealDamage(piece target, bool real)
+    public void dealDamage(piece target, int amount, bool real)
     {
-        target.takeDamage(damage, real);
+        target.takeDamage(amount, real);
         useAttackAbility(target, real);
     }
 
     //this reverses our hypothetical attack
-    public void unDealDamage(piece target, bool real)
+    public void unDealDamage(piece target, int amount, bool real)
     {
         undoAttackAbility(real);
-        target.unTakeDamage(damage, real);
+        target.unTakeDamage(amount, real);
     }
 
     public void takeDamage(int amount, bool real)
@@ -446,9 +468,9 @@ public class piece : MonoBehaviour
     }
 
     //returns how much damage this piece would take after any damage reduction (in theory)
-    public int expectedDamage(int amount)
+    public float expectedDamage(float amount)
     {
-        return amount;
+        return amount;//careful to not let this be negative
     }
 
     public bool isValidCandidate(tile target, bool real)
@@ -461,7 +483,7 @@ public class piece : MonoBehaviour
         else
         {
             return (target.hypoObstacle == 0 &&
-                    hypoExhausted == false);
+                    hypoExhausted == false);// && (target.hypoPiece == null || target.hypoPiece.team != team));
         }
     }
 
@@ -548,6 +570,11 @@ public class piece : MonoBehaviour
                 targets[0].targetedBy.Remove(this);
                 targets.RemoveAt(0);
             }
+            while (hasActivatedAbility && abilityTargets.Count > 0)
+            {
+                abilityTargets[0].abilityTargetedBy.Remove(this);
+                abilityTargets.RemoveAt(0);
+            }
         }
         else
         {
@@ -555,6 +582,11 @@ public class piece : MonoBehaviour
             {
                 hypoTargets[0].hypoTargetedBy.Remove(this);
                 hypoTargets.RemoveAt(0);
+            }
+            while (hasActivatedAbility && hypoAbilityTargets.Count > 0)
+            {
+                hypoAbilityTargets[0].abilityHypoTargetedBy.Remove(this);
+                hypoAbilityTargets.RemoveAt(0);
             }
         }
         if (realOrHypoTile(real) == null)
@@ -564,6 +596,7 @@ public class piece : MonoBehaviour
         findAllCandidates(real);
         retargeted.Add(this);
         realOrHypoTile(real).updateTargeting(real, ref retargeted);
+        findAbilityTargets(real);
     }
 
     //causes this piece to die, has nothing to do with capturing piece
@@ -620,6 +653,15 @@ public class piece : MonoBehaviour
         }
     }
 
+    public int getDesiredRange()
+    {
+        if (desiredRange == 0)
+        {
+            return minAttackRange;
+        }
+        return desiredRange;
+    }
+
     //moves piece to other slot, swapping if it was occupied
     public void moveToSlot(teamSlot newSlot)
     {
@@ -673,6 +715,23 @@ public class piece : MonoBehaviour
         hypoTargets = new List<tile>();
         health = maxHealth;
         hypoHealth = maxHealth;
+    }
+
+    public void highlightAbilityCandidates()
+    {
+        if (!alive)
+        {
+            return;
+        }
+        findAbilityTargets(true);
+        thisTile.gameObject.GetComponent<SpriteRenderer>().color = thisTile.selectedColor;
+        for (int i = 0;i< abilityTargets.Count;i++)
+        {
+            if (isValidAbilityTarget(abilityTargets[i], true))
+            {
+                abilityTargets[i].gameObject.GetComponent<SpriteRenderer>().color = abilityTargets[i].candidateColor;
+            }
+        }
     }
 
     public void highlightCandidates()

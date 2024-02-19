@@ -25,6 +25,10 @@ public class pieceInfoManager : MonoBehaviour
     public Text costText;
     Vector3 costPos;
 
+    public GameObject ability;
+    public Text abilityText;
+    Vector3 abilityPos;
+
     public void init()
     {
         gm = GameObject.FindGameObjectWithTag("gameManager").GetComponent<gameManager>();
@@ -89,6 +93,18 @@ public class pieceInfoManager : MonoBehaviour
         costText.rectTransform.anchorMin = new Vector2(0, 0);
         costText.rectTransform.anchorMax = new Vector2(0, 0);
 
+        ability = new GameObject("ability");
+        ability.transform.SetParent(FindObjectOfType<Canvas>().transform);
+        abilityText = ability.AddComponent<Text>();
+        abilityText.font = Resources.GetBuiltinResource(typeof(Font), "Arial.ttf") as Font;
+        ability.layer = 5;
+        abilityText.alignment = TextAnchor.MiddleCenter;
+        abilityText.color = new Color(0, 0, 0);
+        abilityText.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, 100);
+        abilityText.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, 400);
+        abilityText.rectTransform.anchorMin = new Vector2(0, 0);
+        abilityText.rectTransform.anchorMax = new Vector2(0, 0);
+
         updateText();
     }
 
@@ -97,10 +113,14 @@ public class pieceInfoManager : MonoBehaviour
         Camera c = Camera.main;
 
         Vector3 startPoint = transform.position + new Vector3(-5.5f, .5f, 0);
-
+        
         pieceNamePos = c.WorldToScreenPoint((startPoint + new Vector3(0, 0f, 0)));
         pieceNameText.rectTransform.anchoredPosition = pieceNamePos;
         pieceNameText.fontSize = Mathf.FloorToInt(20 * (AspectUtility.screenWidth / 1612f));
+
+        abilityPos = c.WorldToScreenPoint((startPoint + new Vector3(0, 0f, 0)));
+        abilityText.rectTransform.anchoredPosition = abilityPos;
+        abilityText.fontSize = Mathf.FloorToInt(20 * (AspectUtility.screenWidth / 1612f));
 
         damagePos = c.WorldToScreenPoint((startPoint +  new Vector3(0, -.3f, 0)));
         damageText.rectTransform.anchoredPosition = damagePos;
@@ -113,6 +133,10 @@ public class pieceInfoManager : MonoBehaviour
         costPos = c.WorldToScreenPoint((startPoint + new Vector3(0, -.9f, 0)));
         costText.rectTransform.anchoredPosition = costPos;
         costText.fontSize = Mathf.FloorToInt(20 * (AspectUtility.screenWidth / 1612f));
+
+        abilityPos = c.WorldToScreenPoint((startPoint + new Vector3(0, -1.2f, 0)));
+        abilityText.rectTransform.anchoredPosition = abilityPos;
+        abilityText.fontSize = Mathf.FloorToInt(20 * (AspectUtility.screenWidth / 1612f));
 
         setText();
     }
@@ -130,13 +154,13 @@ public class pieceInfoManager : MonoBehaviour
         if (bm.selectedPiece.alive)
         {
             healthText.text = "Health: " + bm.selectedPiece.health + "/" + bm.selectedPiece.maxHealth;
-            costText.text = "";
         }
         else
         {
             healthText.text = "Health: " + bm.selectedPiece.health;
-            costText.text = "Cost: " + bm.selectedPiece.cost;
         }
+        costText.text = "Cost: " + bm.selectedPiece.cost;
+        abilityText.text = bm.selectedPiece.abilityText;
     }
 
     public void hideText()
@@ -145,5 +169,6 @@ public class pieceInfoManager : MonoBehaviour
         damageText.text = "";
         healthText.text = "";
         costText.text = "";
+        abilityText.text = "";
     }
 }

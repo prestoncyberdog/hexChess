@@ -20,9 +20,11 @@ public class tile : MonoBehaviour
     public tile previousTile;
 
     public List<piece> targetedBy;//stores all pieces targeting tile
+    public List<piece> abilityTargetedBy;
     public piece thisPiece;
     public int obstacle;//may be object instead later
     public List<piece> hypoTargetedBy;
+    public List<piece> abilityHypoTargetedBy;
     public piece hypoPiece;
     public int hypoObstacle;
     public pushedPiece thisPushedPiece;
@@ -51,7 +53,9 @@ public class tile : MonoBehaviour
         transform.Rotate(new Vector3(0, 0, 30));
         distance = 1000;
         targetedBy = new List<piece>();
+        abilityTargetedBy = new List<piece>();
         hypoTargetedBy = new List<piece>();
+        abilityHypoTargetedBy = new List<piece>();
 
         obstacle = 0;//for now
 
@@ -81,6 +85,32 @@ public class tile : MonoBehaviour
         {
             oldPieces = new piece[hypoTargetedBy.Count];
             hypoTargetedBy.CopyTo(oldPieces);
+        }
+
+        for (int i = 0;i<oldPieces.Length;i++)
+        {
+            if (oldPieces[i].moveType != piece.JUMP && oldPieces[i].moveRange > 1 && !retargeted.Contains(oldPieces[i]))//jump or single move targeting is unaffected
+            {
+                //retargeted.Add(oldPieces[i]);
+                oldPieces[i].updateTargeting(real, ref retargeted);
+            }
+        }
+        updateAbilityTargeting(real, ref retargeted);
+    }
+
+    //updates targeting for each piece in abilityTargetedBy list
+    public void updateAbilityTargeting(bool real, ref List<piece> retargeted)
+    {
+        piece[] oldPieces; 
+        if (real)
+        {
+            oldPieces = new piece[abilityTargetedBy.Count];
+            abilityTargetedBy.CopyTo(oldPieces);//copy list so it won't change while we are trying to loop through it
+        }
+        else
+        {
+            oldPieces = new piece[abilityHypoTargetedBy.Count];
+            abilityHypoTargetedBy.CopyTo(oldPieces);
         }
 
         for (int i = 0;i<oldPieces.Length;i++)
@@ -206,6 +236,18 @@ public class tile : MonoBehaviour
                 //actually shouldn't happen, tiles only do this when first created
                 //new tiles wil make links to pre-existing tiles so they won't find existing links
             }
+        }
+    }
+
+    public piece realOrHypoPiece(bool real)
+    {
+        if (real)
+        {
+            return thisPiece;
+        }
+        else
+        {
+            return hypoPiece;
         }
     }
 }

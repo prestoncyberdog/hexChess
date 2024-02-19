@@ -38,14 +38,14 @@ public class gameManager : MonoBehaviour
         piece newPiece;
         for (int i = 0; i < 5; i++)
         {
-            newPiece = Instantiate(Pieces[Random.Range(0,Pieces.Length)], AWAY, Quaternion.identity).GetComponent<piece>();
+            newPiece = Instantiate(Pieces[10]/*Random.Range(0,Pieces.Length)]*/, AWAY, Quaternion.identity).GetComponent<piece>();
             newPiece.team = 0;
             newPiece.init();
             playerPieces.Add(newPiece);
         }
 
         champions = new piece[2];
-        newPiece = Instantiate(Pieces[chooseRandomChampion()], AWAY, Quaternion.identity).GetComponent<piece>();
+        newPiece = Instantiate(Pieces[6]/*chooseRandomChampion()]*/, AWAY, Quaternion.identity).GetComponent<piece>();
         newPiece.team = 0;
         newPiece.init();
         newPiece.champion = true;

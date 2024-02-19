@@ -140,6 +140,22 @@ public class battleManager : MonoBehaviour
             undoPlacement(lastMove, real);
             return;
         }
+        if (lastMove.movedPiece.usedActivatedAbility)
+        {
+            lastMove.movedPiece.undoActivatedAbility(real);
+            lastMove.movedPiece.usedActivatedAbility = false;
+            if (real)
+            {
+                lastMove.movedPiece.exhausted = false;
+                resetHighlighting();
+            }
+            else
+            {
+                lastMove.movedPiece.hypoExhausted = false;
+            }
+            return;
+        }
+
         tile moveEndTile = lastMove.movedPiece.realOrHypoTile(real);//refers to the end of the move we are undoing
         lastMove.movedPiece.undoMoveAbility(real);
         lastMove.movedPiece.moveToTile(lastMove.startingTile, real);
@@ -149,7 +165,7 @@ public class battleManager : MonoBehaviour
         }
         if (lastMove.attacked != null)
         {
-            lastMove.movedPiece.unDealDamage(lastMove.attacked, real);
+            lastMove.movedPiece.unDealDamage(lastMove.attacked, lastMove.movedPiece.damage, real);
         }
         
         if (real)
@@ -240,6 +256,10 @@ public class battleManager : MonoBehaviour
         for (int i = 0; i<allTiles.Length; i++)
         {
             allTiles[i].setColor();
+        }
+        if (selectedPiece != null && selectedPiece.alive && selectedPiece.activatingAbility)
+        {
+            //selectedPiece.highlightAbilityCandidates();
         }
         if (selectedPiece != null && selectedPiece.alive)
         {

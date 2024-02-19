@@ -50,6 +50,7 @@ public class uiManager : MonoBehaviour
             {
                 bm.selectedPiece = currTile.thisPiece;
                 bm.justClicked = true;
+                bm.selectedPiece.activatingAbility = false;
                 bm.resetHighlighting();
                 if (!currTile.thisPiece.exhausted && currTile.thisPiece.team == 0 && bm.playersTurn)
                 {
@@ -61,8 +62,15 @@ public class uiManager : MonoBehaviour
 
         if (Input.GetMouseButtonDown(1))//use right click to make pieces move or place them
         {
-            if (bm.selectedPiece != null && bm.selectedPiece.alive && !bm.selectedPiece.exhausted && currTile.targetedBy.Contains(bm.selectedPiece) && bm.selectedPiece.team == 0 && bm.playersTurn &&
-                bm.selectedPiece.isValidCandidate(currTile, true) && bm.movingPieces == 0)//moving piece
+            if (bm.selectedPiece != null && bm.selectedPiece.alive && !bm.selectedPiece.exhausted && bm.selectedPiece.hasActivatedAbility && bm.selectedPiece.activatingAbility && 
+                bm.selectedPiece.team == 0 && bm.playersTurn  && bm.movingPieces == 0 && bm.selectedPiece.abilityTargets.Contains(currTile) && bm.selectedPiece.isValidAbilityTarget(currTile, true))//activating special ability
+            {
+                bm.selectedPiece.useActivatedAbility(currTile, true);
+                bm.selectedPiece.usedActivatedAbility = true;
+                bm.resetHighlighting();
+            }
+            else if (bm.selectedPiece != null && bm.selectedPiece.alive && !bm.selectedPiece.exhausted && currTile.targetedBy.Contains(bm.selectedPiece) && bm.selectedPiece.team == 0 && bm.playersTurn &&
+                bm.selectedPiece.isValidCandidate(currTile, true) && bm.movingPieces == 0 && !bm.selectedPiece.activatingAbility)//moving piece
             {
                 bm.selectedPiece.moveToTile(currTile, true);
                 StartCoroutine(bm.selectedPiece.moveTowardsNewTile());
@@ -85,7 +93,7 @@ public class uiManager : MonoBehaviour
                 bm.selectedPiece.moveToTile(currTile, true);
                 if (bm.selectedPiece.attacking != null)
                 {
-                    bm.selectedPiece.dealDamage(bm.selectedPiece.attacking, true);
+                    bm.selectedPiece.dealDamage(bm.selectedPiece.attacking, bm.selectedPiece.damage, true);
                     //bm.selectedPiece.attacking = null;
                 }
                 bm.selectedPiece.arriveOnTile();
@@ -146,6 +154,24 @@ public class uiManager : MonoBehaviour
                 reversableMove lastMove = bm.undoStack[0];
                 bm.undoStack.RemoveAt(0);
                 bm.undoMove(lastMove, true);
+            }
+        }
+
+        if (Input.GetKeyDown(KeyCode.Z))
+        {
+            if (bm.playersTurn &&
+                bm.selectedPiece != null &&
+                bm.selectedPiece.team == 0 &&
+                bm.selectedPiece.alive && 
+                !bm.selectedPiece.exhausted &&
+                bm.selectedPiece.hasActivatedAbility)
+            {
+                for (int i = 0; i<bm.allTiles.Length; i++)
+                {
+                    bm.allTiles[i].setColor();
+                }
+                bm.selectedPiece.highlightAbilityCandidates();
+                bm.selectedPiece.activatingAbility = true;
             }
         }
 

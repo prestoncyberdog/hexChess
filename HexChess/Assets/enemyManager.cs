@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -69,56 +69,18 @@ public class enemyManager : MonoBehaviour
         //these values can balance how much the ai values different measures
         float championWeight = 2;//bonus multiplier on piece value
         float pieceWeight = 5;
-        float targetingWeight = 0.5f;
+        float targetingWeight = 0.4f;
         float positionWeight = 0.2f;
-        float notMovingPenalty = .5f;
+        float notMovingPenalty = .1f;
         float randomizationWeight = 0;//0.01f;
         findAllPieces(false);
-        float value = (calculateChampionScore(championWeight, targetingWeight) +
-                       calculatePieceScore(pieceWeight) +
+        float value = (calculatePieceScore(pieceWeight) +
                        calculateTargetingScore(targetingWeight, pieceWeight) +
+                       calculateChampionScore(championWeight, targetingWeight) +
                        calculatePositionScore(positionWeight, notMovingPenalty)) *
                        (1 + (Random.Range(0, 10000) / 10000f) * randomizationWeight);
         //Debug.Log("position value: " + value);
         return value;
-    }
-
-    //considers whether both champions are alive and healthy
-    //championWeight multiplies with the health fraction of each champion
-    public float calculateChampionScore(float championWeight, float targetingWeight)
-    {
-        float champScore = 0;
-        int potentialDamage = 0;
-        if (gm.champions[0] != null && gm.champions[0].hypoAlive)
-        {
-            champScore -= 10000;
-            champScore -= championWeight * gm.champions[0].value * gm.champions[0].hypoHealth * 1f / gm.champions[0].maxHealth;
-        }
-        if (gm.champions[1] != null && gm.champions[1].hypoAlive)
-        {
-            champScore += 10000;
-            champScore += championWeight * gm.champions[0].value * gm.champions[1].hypoHealth * 1f / gm.champions[1].maxHealth;
-        }
-        //include targeting onto enemy champion
-        //consider each attacking piece
-        for (int i = 0; i < gm.champions[1].hypoTile.hypoTargetedBy.Count; i++)
-        { 
-            if (gm.champions[1].hypoTile.hypoTargetedBy[i].team == 0)
-            {
-                potentialDamage += gm.champions[1].expectedDamage(gm.champions[1].hypoTile.hypoTargetedBy[i].damage);
-            }
-        } 
-        if (potentialDamage >= gm.champions[1].hypoHealth)
-        {
-            champScore -= 10000;
-        }
-        else
-        {
-            champScore -= championWeight * targetingWeight * gm.champions[1].value * potentialDamage * 1f / gm.champions[1].maxHealth;
-        }
-
-        //Debug.Log("Champ score: " + champScore);
-        return champScore;
     }
 
     //adds up all living piece values for each player and considers the difference
@@ -153,9 +115,7 @@ public class enemyManager : MonoBehaviour
     public float calculateTargetingScore(float targetingWeight, float pieceWeight)
     {
         float targetingScore = 0;
-        float pieceTargetingPenalty;
         bool defended;
-        int potentialDamage;
         bool canRetaliate;
         float retaliationModifier = 0.1f;//give less penalty when we hope to retaliate
         piece otherPiece;
@@ -163,10 +123,22 @@ public class enemyManager : MonoBehaviour
         tile landingTile;
         for (int i = 0; i < enemyPieces.Count; i++)
         {
+            enemyPieces[i].potentialIncomingDamage = 0;
+            enemyPieces[i].pieceTargetingPenalty = 0;
+        }
+        calculateAbilityTargeting(pieceWeight);
+        for (int i = 0; i < enemyPieces.Count; i++)
+        {
             currentTile = enemyPieces[i].hypoTile;
             defended = false;
-            potentialDamage = 0;
-            pieceTargetingPenalty = 0;
+            for (int j = 0;j<currentTile.abilityHypoTargetedBy.Count;j++)
+            {
+                if (currentTile.abilityHypoTargetedBy[j].team == 1 && currentTile.abilityHypoTargetedBy[j].abilityFearScore > 0)
+                {
+                    defended = true;
+                    break;
+                }
+            }
             //consider each attacking piece
             for (int j = 0; j < currentTile.hypoTargetedBy.Count; j++)
             {
@@ -188,37 +160,97 @@ public class enemyManager : MonoBehaviour
                             break;
                         }
                     }
+                    for (int k = 0;k<landingTile.abilityHypoTargetedBy.Count;k++)
+                    {
+                        if (landingTile.abilityHypoTargetedBy[k].team == 1 && landingTile.abilityHypoTargetedBy[k].abilityFearScore > 0)
+                        {
+                            canRetaliate = true;
+                            break;
+                        }
+                    }
 
                     if (canRetaliate)
                     {
-                        pieceTargetingPenalty += (enemyPieces[i].expectedDamage(otherPiece.damage) * 1f / enemyPieces[i].maxHealth) * .5f * enemyPieces[i].value * pieceWeight * retaliationModifier;
+                        enemyPieces[i].pieceTargetingPenalty += (enemyPieces[i].expectedDamage(otherPiece.damage) * 1f / enemyPieces[i].maxHealth) * .5f * enemyPieces[i].value * pieceWeight * retaliationModifier;
                     }
                     else
                     {
-                        pieceTargetingPenalty += (enemyPieces[i].expectedDamage(otherPiece.damage) * 1f / enemyPieces[i].maxHealth) * .5f * enemyPieces[i].value * pieceWeight;
+                        enemyPieces[i].pieceTargetingPenalty += (enemyPieces[i].expectedDamage(otherPiece.damage) * 1f / enemyPieces[i].maxHealth) * .5f * enemyPieces[i].value * pieceWeight;
                     }
-                    potentialDamage += enemyPieces[i].expectedDamage(otherPiece.damage);
+                    enemyPieces[i].potentialIncomingDamage += enemyPieces[i].expectedDamage(otherPiece.damage);
                 }
             }
             //check if total is enough to capture
-            if (potentialDamage > enemyPieces[i].hypoHealth)
+            if (enemyPieces[i].potentialIncomingDamage > enemyPieces[i].hypoHealth)
             {
                     if (defended)
                     {
-                        pieceTargetingPenalty += enemyPieces[i].value * pieceWeight * retaliationModifier;
+                        enemyPieces[i].pieceTargetingPenalty += enemyPieces[i].value * pieceWeight * retaliationModifier;
                     }
                     else
                     {
-                        pieceTargetingPenalty += enemyPieces[i].value * pieceWeight;
+                        enemyPieces[i].pieceTargetingPenalty += enemyPieces[i].value * pieceWeight;
                     }
             }
             //update targeting score for this piece
-            pieceTargetingPenalty *= targetingWeight;
-            pieceTargetingPenalty = Mathf.Min(pieceTargetingPenalty, enemyPieces[i].value * pieceWeight) * -1f;//penalty cannot be worse than the losing the piece
-            targetingScore += Mathf.Min(pieceTargetingPenalty, 0);//cannot be positive result
+            enemyPieces[i].pieceTargetingPenalty *= targetingWeight;
+            enemyPieces[i].pieceTargetingPenalty = Mathf.Min(enemyPieces[i].pieceTargetingPenalty, enemyPieces[i].value * pieceWeight) * -1f;//penalty cannot be worse than the losing the piece
+            targetingScore += Mathf.Min(enemyPieces[i].pieceTargetingPenalty, 0);//cannot be positive result
         }
         //Debug.Log("Targeting score: " + targetingScore);
         return targetingScore;
+    }
+
+    //checks each player piece for whether it has an activatable ability targeting each enemy piece
+    //penalizes the enemy depending on the player's piece abilityFearScore
+    //stores info in the pieces that are being targeted
+    public void calculateAbilityTargeting(float pieceWeight)
+    {
+        tile targetedTile;
+        for (int i = 0; i < playerPieces.Count; i++)
+        {
+            for (int j = 0; j < playerPieces[i].hypoAbilityTargets.Count; j++)
+            {
+                targetedTile = playerPieces[i].hypoAbilityTargets[j];
+                if (playerPieces[i].isValidAbilityTarget(targetedTile, false) && targetedTile.hypoPiece != null && targetedTile.hypoPiece.team == 1)
+                {
+                    //here, the player's piece is targeting an enemy piece with an activatable ability
+                    targetedTile.hypoPiece.pieceTargetingPenalty += (targetedTile.hypoPiece.expectedDamage(playerPieces[i].abilityFearScore) * 1f / targetedTile.hypoPiece.maxHealth) *
+                                                                    .5f * targetedTile.hypoPiece.value * pieceWeight;
+                    targetedTile.hypoPiece.potentialIncomingDamage += targetedTile.hypoPiece.expectedDamage(playerPieces[i].abilityFearScore);
+                }
+            }
+        }
+    }
+
+    //considers whether both champions are alive and healthy
+    //championWeight multiplies with the health fraction of each champion
+    public float calculateChampionScore(float championWeight, float targetingWeight)
+    {
+        float champScore = 0;
+        if (gm.champions[0] != null && gm.champions[0].hypoAlive)
+        {
+            champScore -= 10000;
+            champScore -= championWeight * gm.champions[0].value * gm.champions[0].hypoHealth * 1f / gm.champions[0].maxHealth;
+        }
+        if (gm.champions[1] != null && gm.champions[1].hypoAlive)
+        {
+            champScore += 10000;
+            champScore += championWeight * gm.champions[0].value * gm.champions[1].hypoHealth * 1f / gm.champions[1].maxHealth;
+        }
+        //include targeting onto enemy champion
+        //potentialIncomingDamage has already been calculated by the calculateTargetingScore function
+        if (gm.champions[1].potentialIncomingDamage >= gm.champions[1].hypoHealth)
+        {
+            champScore -= 10000;
+        }
+        else
+        {
+            champScore -= championWeight * targetingWeight * gm.champions[1].value * gm.champions[1].potentialIncomingDamage * 1f / gm.champions[1].maxHealth;
+        }
+
+        //Debug.Log("Champ score: " + champScore);
+        return champScore;
     }
 
     //awards points to each enemy piece based on its proximity to any objective the enemy doesnt already control
@@ -229,7 +261,7 @@ public class enemyManager : MonoBehaviour
         float positionScore = 0;
         for (int i = 0; i < enemyPieces.Count; i++)
         {
-            positionScore -= Mathf.Abs(enemyPieces[i].hypoTile.hypoChampionDists[0] - enemyPieces[i].minAttackRange);//penalize each piece for being farther than min range from the player's champion
+            positionScore -= Mathf.Abs(enemyPieces[i].hypoTile.hypoChampionDists[0] - enemyPieces[i].getDesiredRange());//penalize each piece for being farther than min range from the player's champion
             if (enemyPieces[i].notMoving)
             {
                 positionScore -= notMovingPenalty;
@@ -311,6 +343,7 @@ public class enemyManager : MonoBehaviour
     //we will select the closest piece to an uncontrolled objective, then order other pieces by distance from the first
     public void orderPieces()
     {
+        findAllPieces(false);
         decideOrder = new List<piece>();
         int minDist = 10000;;
         int currDist;
@@ -425,7 +458,16 @@ public class enemyManager : MonoBehaviour
     {
         if (currentPiece.alive)//moving existing piece
         {
-            if (currentPiece.intention != currentPiece.thisTile)
+            if (currentPiece.activatingAbility)
+            {
+                currentPiece.useActivatedAbility(currentPiece.intention, true);
+                bm.resetHighlighting();
+                if (moveOrder.Count >  1 || !readyToEnd)
+                {
+                    moveDelay = moveDelayMax;
+                }
+            }
+            else if (currentPiece.intention != currentPiece.thisTile)
             {
                 currentPiece.moveToTile(currentPiece.intention, true);
                 StartCoroutine(currentPiece.moveTowardsNewTile());
@@ -456,7 +498,9 @@ public class enemyManager : MonoBehaviour
             bm.alivePieces[i].turnStartTile = bm.alivePieces[i].thisTile;
             //copy targets
             bm.alivePieces[i].hypoTargets = new List<tile>();
+            bm.alivePieces[i].hypoAbilityTargets = new List<tile>();
             copyTileList(bm.alivePieces[i].targets, bm.alivePieces[i].hypoTargets);
+            copyTileList(bm.alivePieces[i].abilityTargets, bm.alivePieces[i].hypoAbilityTargets);
         }
         for (int i = 0; i < bm.allTiles.Length; i++)
         {
@@ -464,7 +508,9 @@ public class enemyManager : MonoBehaviour
             bm.allTiles[i].hypoObstacle = bm.allTiles[i].obstacle;
             //copy targeted by
             bm.allTiles[i].hypoTargetedBy = new List<piece>();
+            bm.allTiles[i].abilityHypoTargetedBy = new List<piece>();
             copyPieceList(bm.allTiles[i].targetedBy, bm.allTiles[i].hypoTargetedBy);
+            copyPieceList(bm.allTiles[i].abilityTargetedBy, bm.allTiles[i].abilityHypoTargetedBy);
         }
         bm.generator.findDistsToChampions(false);
     }
@@ -511,6 +557,15 @@ public class enemyManager : MonoBehaviour
                     Debug.LogError("Hypo piece  " + i + " targeting does not match real piece targeting");
                 }
             }
+
+            for (int j = 0;j< bm.alivePieces[i].abilityTargets.Count; j++)
+            {
+                if (!bm.alivePieces[i].hypoAbilityTargets.Contains(bm.alivePieces[i].abilityTargets[j]) || 
+                    bm.alivePieces[i].abilityTargets.Count != bm.alivePieces[i].hypoAbilityTargets.Count)
+                {
+                    Debug.LogError("Hypo piece  " + i + " ability targeting does not match real piece targeting");
+                }
+            }
         }
         for (int i = 0; i < bm.allTiles.Length; i++)
         {
@@ -520,6 +575,14 @@ public class enemyManager : MonoBehaviour
                     bm.allTiles[i].targetedBy.Count != bm.allTiles[i].hypoTargetedBy.Count)
                 {
                     Debug.LogError("Hypo tile " + i + " targeting does not match real tile targeting");
+                }
+            }
+            for (int j = 0;j< bm.allTiles[i].abilityTargetedBy.Count; j++)
+            {
+                if (!bm.allTiles[i].abilityHypoTargetedBy.Contains(bm.allTiles[i].abilityTargetedBy[j]) ||
+                    bm.allTiles[i].abilityTargetedBy.Count != bm.allTiles[i].abilityHypoTargetedBy.Count)
+                {
+                    Debug.LogError("Hypo tile " + i + " ablility targeting does not match real tile targeting");
                 }
             }
         }
@@ -566,6 +629,8 @@ public class enemyManager : MonoBehaviour
             bm.alivePieces[i].exhausted = false;
             bm.alivePieces[i].hypoExhausted = false;
             bm.alivePieces[i].notMoving = false;
+            bm.alivePieces[i].usedActivatedAbility = false;
+            bm.alivePieces[i].activatingAbility = false;
             bm.alivePieces[i].setColor();
         }
     }
@@ -588,7 +653,7 @@ public class enemyManager : MonoBehaviour
 
     public void createChampion()
     {
-        piece newPiece = Instantiate(gm.Pieces[gm.chooseRandomChampion()], new Vector3(1000, 1000, 0), Quaternion.identity).GetComponent<piece>();
+        piece newPiece = Instantiate(gm.Pieces[8/*gm.chooseRandomChampion()*/], new Vector3(1000, 1000, 0), Quaternion.identity).GetComponent<piece>();
         newPiece.team = 1;
         newPiece.init();
         newPiece.champion = true;
@@ -599,7 +664,7 @@ public class enemyManager : MonoBehaviour
     {
         for (int i = spawnPlan.Count; i < 10; i++)
         {
-            piece newPiece = Instantiate(gm.Pieces[Random.Range(0, gm.Pieces.Length)], new Vector3(1000, 1000, 0), Quaternion.identity).GetComponent<piece>();
+            piece newPiece = Instantiate(gm.Pieces[10]/*Random.Range(0, gm.Pieces.Length)]*/, new Vector3(1000, 1000, 0), Quaternion.identity).GetComponent<piece>();
             newPiece.team = 1;
             newPiece.init();
             spawnPlan.Add(newPiece);
@@ -622,7 +687,7 @@ public class enemyManager : MonoBehaviour
             stack = new List<recursiveActionItem>();
             recursiveActionItem current = new recursiveActionItem();
             current.pieceIndex = -1;
-            current.bestVal = -100000;
+            current.bestVal = -1000000;
             stack.Insert(0, current);
 
             while (stack.Count > 0)
@@ -630,23 +695,33 @@ public class enemyManager : MonoBehaviour
                 current = stack[0];
                 //update indices
                 current.tileIndex++;//advance inner (tile) loop
-                if (current.targetListCopy == null || current.tileIndex >= current.targetListCopy.Length)
+                if (current.abilityListCopy != null && current.abilityListCopy.Length > 0 && current.tileIndex >= current.targetListCopy.Length)
+                {
+                    current.abilityIndex++;
+                }
+
+                if (current.targetListCopy == null || (current.tileIndex >= current.targetListCopy.Length && (current.abilityIndex >= current.abilityListCopy.Length ||
+                                                                                                              current.abilityListCopy.Length == 0)))//here we dont have a piece to analyze
                 {
                     do
                     {
                         current.pieceIndex += 1;//advance outer (piece) loop
-                    } while (current.pieceIndex < decideOrder.Count && current.pieceIndex < turnGroupSize && decideOrder[current.pieceIndex].hypoExhausted);//find a piece that isnt exhausted
-                    if (current.pieceIndex < decideOrder.Count && current.pieceIndex < turnGroupSize)
+                    } while (current.pieceIndex < decideOrder.Count && current.pieceIndex < turnGroupSize && 
+                            (decideOrder[current.pieceIndex].hypoExhausted || !decideOrder[current.pieceIndex].hypoAlive));//find a piece that isnt exhausted or dead
+                    if (current.pieceIndex < decideOrder.Count && current.pieceIndex < turnGroupSize)//here we have a new piece to analyze
                     {
                         current.tileIndex = -1;//start at -1 to consider not moving first
                         current.targetListCopy = new tile[decideOrder[current.pieceIndex].hypoTargets.Count];
                         decideOrder[current.pieceIndex].hypoTargets.CopyTo(current.targetListCopy);
+                        current.abilityIndex = -1;//start at -1 so we can increment to 0 before using
+                        current.abilityListCopy = new tile[decideOrder[current.pieceIndex].hypoAbilityTargets.Count];
+                        decideOrder[current.pieceIndex].hypoAbilityTargets.CopyTo(current.abilityListCopy);
                     }
                 }
                 //consider going up
                 if (!(current.pieceIndex < decideOrder.Count && current.pieceIndex < turnGroupSize))
                 {
-                    if (current.bestVal == -100000)//we did not manage to recurse on any other pieces
+                    if (current.bestVal == -1000000)//we did not manage to recurse on any other pieces
                     {
                         current.bestVal = evaluatePosition();
                     }
@@ -675,31 +750,11 @@ public class enemyManager : MonoBehaviour
         {
             current.attackedPiece = null;
             //update hypo board to include new move
-            if (current.bestTile.hypoPiece != null && 
-                current.bestTile.hypoPiece != current.bestPiece &&
-                current.bestTile.hypoPiece.willGetCaptured(current.bestPiece, false))//here we are capturing a piece
-            {
-                current.bestTile.hypoPiece.getCaptured(false);
-            }
-            else if (current.bestTile.hypoPiece != null && 
-                     current.bestTile.hypoPiece != current.bestPiece)//here, we are attacking but not capturing another piece
-            {
-                current.attackedPiece = current.bestTile.hypoPiece;
-            }
-            else if(current.bestTile == current.bestPiece.hypoTile)//here we aren't moving
-            {
-                current.bestPiece.notMoving = true;
-            }
-            current.bestPiece.moveToTile(current.bestTile, false);//we must move after capturing but before dealing damage
-            if (current.attackedPiece != null)
-            {
-                current.bestPiece.dealDamage(current.attackedPiece, false);
-                current.attackedPiece = null;
-            }
-            current.bestPiece.pushedPieces = null;//shouldnt matter
+            makeHypoMove(current);
 
             moveOrder.Add(current.bestPiece);
             current.bestPiece.intention = current.bestTile;
+            current.bestPiece.activatingAbility = current.usingAbility;
             decideOrder.Remove(current.bestPiece);
 
             stack.RemoveAt(0);
@@ -711,37 +766,28 @@ public class enemyManager : MonoBehaviour
         {
             above.bestVal = current.bestVal;
             above.bestPiece = decideOrder[above.pieceIndex];
-            if (above.tileIndex == -1)//piece did not move
+            if (above.tileIndex == -1)//piece inactive
             {
                 above.bestTile = decideOrder[above.pieceIndex].hypoTile;
+                above.usingAbility = false;
+            }
+            else if (above.abilityListCopy != null && above.abilityListCopy.Length > 0 && above.tileIndex >= above.targetListCopy.Length)
+            {
+                above.bestTile = above.abilityListCopy[above.abilityIndex];
+                above.usingAbility = true;
             }
             else
             {
                 above.bestTile = above.targetListCopy[above.tileIndex];
+                above.usingAbility = false;
             }
         }
 
+        //undo hypo move
         reversableMove thisMove = new reversableMove(decideOrder[above.pieceIndex], above.previousTile, above.attackedPiece, above.capturedPiece);
         bm.undoMove(thisMove, false);
         above.capturedPiece = null;
         above.attackedPiece = null;
-        //undo hypo move
-        /*decideOrder[above.pieceIndex].undoAttackAbility();
-        decideOrder[above.pieceIndex].undoMoveAbility();
-        decideOrder[above.pieceIndex].moveToTile(above.previousTile, false);
-        decideOrder[above.pieceIndex].hypoExhausted = false;
-        decideOrder[above.pieceIndex].capturing = null;
-        if (above.capturedPiece != null)
-        {
-            above.capturedPiece.hypoAlive = true;
-            above.capturedPiece.placePiece(above.targetListCopy[above.tileIndex], false);
-            above.capturedPiece = null;
-        }
-        if (above.attackedPiece != null)
-        {
-            decideOrder[above.pieceIndex].unDealDamage(above.attackedPiece);
-            above.attackedPiece = null;
-        }*/
 
         //remove level from stack
         stack.RemoveAt(0);
@@ -749,12 +795,20 @@ public class enemyManager : MonoBehaviour
 
     public void goDownLevel(recursiveActionItem current)
     {
-        if (current.tileIndex == -1)//piece not moving
+        if (current.tileIndex == -1)//piece inactive
         {
             //make hypo move
             decideOrder[current.pieceIndex].hypoExhausted = true;
             decideOrder[current.pieceIndex].notMoving = true;
             current.previousTile = decideOrder[current.pieceIndex].hypoTile;
+        }
+        else if (current.abilityListCopy != null && current.abilityListCopy.Length > 0 && current.tileIndex >= current.targetListCopy.Length)//here we've already considered all normal moves
+        {
+            if (!(decideOrder[current.pieceIndex].isValidAbilityTarget(current.abilityListCopy[current.abilityIndex], false)))
+            {
+                return;//not a valid ability target, do nothing
+            }
+            makeHypoMove(current);
         }
         else
         {
@@ -762,7 +816,33 @@ public class enemyManager : MonoBehaviour
             {
                 return;//not a valid move, do nothing
             }
-            //make hypo move
+            makeHypoMove(current);
+        }
+
+        //add new level to stack
+        recursiveActionItem below = new recursiveActionItem();
+        below.pieceIndex = -1;
+        below.bestVal = -1000000;
+        stack.Insert(0, below);
+    }
+
+
+    public void makeHypoMove(recursiveActionItem current)
+    {
+        if (current.tileIndex >= current.targetListCopy.Length && (current.abilityIndex >= current.abilityListCopy.Length ||
+                                                                   current.abilityListCopy.Length == 0))//no more moves to hypo, we need to make the best one for the real plan
+        {
+            makeBestHypoMove(current);
+            return;
+        }
+        else if (current.abilityListCopy != null && current.abilityListCopy.Length > 0 && current.tileIndex >= current.targetListCopy.Length)
+        {
+            decideOrder[current.pieceIndex].useActivatedAbility(current.abilityListCopy[current.abilityIndex], false);
+            decideOrder[current.pieceIndex].usedActivatedAbility = true;
+            return;
+        }
+        else
+        {
             current.previousTile = decideOrder[current.pieceIndex].hypoTile;
             if (current.targetListCopy[current.tileIndex].hypoPiece != null && 
                 current.targetListCopy[current.tileIndex].hypoPiece.willGetCaptured(decideOrder[current.pieceIndex], false))//here we are capturing a piece
@@ -777,15 +857,42 @@ public class enemyManager : MonoBehaviour
             decideOrder[current.pieceIndex].moveToTile(current.targetListCopy[current.tileIndex], false);
             if (current.attackedPiece != null)
             {
-                decideOrder[current.pieceIndex].dealDamage(current.attackedPiece, false);
+                decideOrder[current.pieceIndex].dealDamage(current.attackedPiece, decideOrder[current.pieceIndex].damage, false);
             }
         }
+    }
 
-        //add new level to stack
-        recursiveActionItem below = new recursiveActionItem();
-        below.pieceIndex = -1;
-        below.bestVal = -100000;
-        stack.Insert(0, below);
+    public void makeBestHypoMove(recursiveActionItem current)
+    {
+        
+        if (current.usingAbility)
+        {
+            current.bestPiece.useActivatedAbility(current.bestTile, false);
+            current.bestPiece.usedActivatedAbility = true;
+            return;
+        }
+        if (current.bestTile.hypoPiece != null && 
+            current.bestTile.hypoPiece != current.bestPiece &&
+            current.bestTile.hypoPiece.willGetCaptured(current.bestPiece, false))//here we are capturing a piece
+        {
+            current.bestTile.hypoPiece.getCaptured(false);
+        }
+        else if (current.bestTile.hypoPiece != null && 
+                current.bestTile.hypoPiece != current.bestPiece)//here, we are attacking but not capturing another piece
+        {
+            current.attackedPiece = current.bestTile.hypoPiece;
+        }
+        else if(current.bestTile == current.bestPiece.hypoTile)//here we aren't moving
+        {
+            current.bestPiece.notMoving = true;
+        }
+        current.bestPiece.moveToTile(current.bestTile, false);//we must move after capturing but before dealing damage
+        if (current.attackedPiece != null)
+        {
+            current.bestPiece.dealDamage(current.attackedPiece, current.bestPiece.damage, false);
+            current.attackedPiece = null;
+        }
+        current.bestPiece.pushedPieces = null;//shouldnt matter
     }
 }
 
@@ -794,9 +901,12 @@ public class recursiveActionItem
     public float bestVal;
     public piece bestPiece;
     public tile bestTile;
-    public int pieceIndex;
-    public int tileIndex;
+    public int pieceIndex;//index into decideOrder
+    public int tileIndex;//index into targetListCopy
     public tile[] targetListCopy;
+    public int abilityIndex;//index into abilityListCopy
+    public tile[] abilityListCopy;
+    public bool usingAbility;
     public piece capturedPiece;
     public piece attackedPiece;
     public tile previousTile;
