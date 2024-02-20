@@ -56,3 +56,6 @@ TagManager:
   - name: piece
     uniqueID: 1179710421
     locked: 0
+  - name: piece decoration
+    uniqueID: 4083075373
+    locked: 0

@@ -17,7 +17,7 @@ public class stepArcher : piece
         cost = 3;
         maxHealth = 2;
         damage = 0;
-        qualityBonus = 0;
+        qualityBonus = .5f;
 
         hasActivatedAbility = true;
         shootRange = 2;
@@ -39,7 +39,6 @@ public class stepArcher : piece
     {
         activatingAbility = false;
         shotAt = target.realOrHypoPiece(real);
-        dealDamage(shotAt, shootDamage, real);
         attacking = null;
         capturing = null;
         if (real)
@@ -47,9 +46,11 @@ public class stepArcher : piece
             reversableMove thisMove = new reversableMove(this, thisTile, null, null);
             bm.undoStack.Insert(0, thisMove);
             exhausted = true;
+            launchProjectile(shotAt, shootDamage);
         }
         else
         {
+            dealDamage(shotAt, shootDamage, real);
             hypoExhausted = true;
         }
     }

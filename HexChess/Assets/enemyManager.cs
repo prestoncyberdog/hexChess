@@ -653,7 +653,7 @@ public class enemyManager : MonoBehaviour
 
     public void createChampion()
     {
-        piece newPiece = Instantiate(gm.Pieces[8/*gm.chooseRandomChampion()*/], new Vector3(1000, 1000, 0), Quaternion.identity).GetComponent<piece>();
+        piece newPiece = Instantiate(gm.Pieces[gm.chooseRandomChampion()], new Vector3(1000, 1000, 0), Quaternion.identity).GetComponent<piece>();
         newPiece.team = 1;
         newPiece.init();
         newPiece.champion = true;
@@ -664,7 +664,7 @@ public class enemyManager : MonoBehaviour
     {
         for (int i = spawnPlan.Count; i < 10; i++)
         {
-            piece newPiece = Instantiate(gm.Pieces[10]/*Random.Range(0, gm.Pieces.Length)]*/, new Vector3(1000, 1000, 0), Quaternion.identity).GetComponent<piece>();
+            piece newPiece = Instantiate(gm.Pieces[Random.Range(0, gm.Pieces.Length)], new Vector3(1000, 1000, 0), Quaternion.identity).GetComponent<piece>();
             newPiece.team = 1;
             newPiece.init();
             spawnPlan.Add(newPiece);

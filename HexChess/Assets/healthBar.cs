@@ -152,7 +152,14 @@ public class healthBar : MonoBehaviour
         damageText.rectTransform.anchoredPosition = damagePos;
         damageText.fontSize = Mathf.FloorToInt(24 * (AspectUtility.screenWidth / 1612f));
 
-        setText();
+        if (owner.alive)
+        {
+            setText();
+        }
+        else
+        {
+            hideText();
+        }
     }
 
     public void setText()

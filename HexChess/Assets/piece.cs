@@ -54,8 +54,6 @@ public class piece : MonoBehaviour
     public tile hypoPushedTile;
     public List<pushedPiece> pushedPieces;
     public tile turnStartTile;
-    public float moveRate;
-    public float pushMoveRate;
     public piece capturing;
     public piece attacking;
     public bool notMoving;
@@ -67,13 +65,12 @@ public class piece : MonoBehaviour
     public string abilityText;
     public float abilityFearScore;
     public int desiredRange;
+    public buttonAbility activateButton;
 
     public void init()
     {
         gm = GameObject.FindGameObjectWithTag("gameManager").GetComponent<gameManager>();
         bm = gm.bm;
-        pushMoveRate = 5;
-        moveRate = 5;
         playerColor = new Color(0.2f, 0.2f, 1f);
         exhaustedPlayerColor = playerColor;// new Color(0.4f, 0.4f, 1f);
         enemyColor = new Color(1f, 0.2f, 0.2f);
@@ -103,13 +100,22 @@ public class piece : MonoBehaviour
             minAttackRange = moveRange;
         }
 
+        if (hasActivatedAbility)
+        {
+            createAbilityButton();
+        }
+
         updateTargeting(true);
         setColor();
     }
 
     void Update()
     {
-
+        if (bm.selectedPiece != null && bm.selectedPiece == this && activateButton != null && canUseAbility() && !activatingAbility)
+        {
+            activateButton.reactivate();
+            thisHealthBar.hideText();
+        }
     }
 
     public virtual void specificInit(){}
@@ -239,14 +245,14 @@ public class piece : MonoBehaviour
         exhausted = true;
         bm.resetHighlighting();
         exhausted = temp;
-        float moveRateThisMovement = moveRate;
+        float moveRateThisMovement = gm.moveRate;
         if (pushedTile != null)
         {
-            moveRateThisMovement = pushMoveRate;
+            moveRateThisMovement = gm.pushMoveRate;
         }
         else if (team == 0)
         {
-            moveRateThisMovement = moveRate * 2;
+            moveRateThisMovement = gm.moveRate * 2;
         }
 
         bm.movingPieces++;
@@ -778,6 +784,43 @@ public class piece : MonoBehaviour
         {
             planPathsInALine(real);
         }
+    }
+
+    public void startUsingAbility()
+    {
+        if (canUseAbility())
+        {
+            for (int i = 0; i<bm.allTiles.Length; i++)
+            {
+                bm.allTiles[i].setColor();
+            }
+            highlightAbilityCandidates();
+            activatingAbility = true;
+            //activateButton.deactivate();
+        }
+    }
+
+    public void createAbilityButton()
+    {
+        activateButton = Instantiate(gm.ButtonAbility, gm.AWAY, Quaternion.identity).GetComponent<buttonAbility>();
+        activateButton.owner = this;
+        activateButton.init();
+    }
+
+    public bool canUseAbility()
+    {
+        return bm != null && bm.selectedPiece == this && bm.playersTurn && team == 0 && alive && !exhausted && hasActivatedAbility;
+    }
+
+    public void launchProjectile(piece target, int projectileDamage)
+    {
+        projectile launch;
+        launch = Instantiate(gm.Projectile, gm.AWAY, Quaternion.identity).GetComponent<projectile>();
+        launch.source = this;
+        launch.target = target;
+        launch.damage = projectileDamage;
+        bm.movingPieces++;
+        launch.init();
     }
 
     //breadth first search of tiles not recursing on unavailable tiles

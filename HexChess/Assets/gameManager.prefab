@@ -70,6 +70,10 @@ MonoBehaviour:
     type: 3}
   HealthBarPip: {fileID: 311275622870036768, guid: d848dfee0b81d2947b4bcd12fe147241,
     type: 3}
+  ButtonAbility: {fileID: 4298091458219432615, guid: c00fa11116b5ab24199823c72bd2526d,
+    type: 3}
+  Projectile: {fileID: 5707021919925687007, guid: 8e2b847ec5a85ff4bb7aa49953f77475,
+    type: 3}
   bm: {fileID: 0}
   playerPieces: []
   champions: []
