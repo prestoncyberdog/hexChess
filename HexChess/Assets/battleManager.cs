@@ -21,7 +21,7 @@ public class battleManager : MonoBehaviour
     public bool playersTurn;
     public int playsRemaining;
     public int playerEnergy;
-    public int enemyEnergy;
+    public float enemyEnergy;
     public int movingPieces;
 
     void Start()
@@ -57,7 +57,7 @@ public class battleManager : MonoBehaviour
         clearUndoStorage();
         playersTurn = (whosTurn == 0);
         giveTurnBonuses(whosTurn);
-        em.unexhaustPieces();
+        em.resetPieces();
         resetHighlighting();
     }
 
@@ -152,6 +152,7 @@ public class battleManager : MonoBehaviour
             else
             {
                 lastMove.movedPiece.hypoExhausted = false;
+                lastMove.movedPiece.wastingAttackOnAlly = false;//can include wasting abilities
             }
             return;
         }
@@ -177,7 +178,8 @@ public class battleManager : MonoBehaviour
         else
         {
             lastMove.movedPiece.hypoExhausted = false;
-            lastMove.movedPiece.notMoving = false;
+            lastMove.movedPiece.inactive = false;
+            lastMove.movedPiece.wastingAttackOnAlly = false;
         }
     }
 
@@ -189,12 +191,18 @@ public class battleManager : MonoBehaviour
         List<piece> retargeted = new List<piece>();
         retargeted.Add(placement.movedPiece);
         placedTile.updateTargeting(real, ref retargeted);
+        placement.movedPiece.beingSummoned = false;
         if (real)
         {
+            placement.movedPiece.exhausted = false;
             recentlyCaptured.Remove(placement.movedPiece);
             placement.movedPiece.moveToSlot(um.findOpenSlot());
             placement.movedPiece.refundEnergyCost();
             resetHighlighting();
+        }
+        else
+        {
+            placement.movedPiece.hypoExhausted = false;
         }
     }
 

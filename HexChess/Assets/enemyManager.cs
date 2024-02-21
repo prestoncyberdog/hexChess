@@ -58,6 +58,7 @@ public class enemyManager : MonoBehaviour
         bm.changeTurn(1);
         findAllPieces(true);
         copyHypoBoard();
+        prepareSpawns();
         StartCoroutine(decideActions());
         StartCoroutine(moveAllPieces());
     }
@@ -71,13 +72,13 @@ public class enemyManager : MonoBehaviour
         float pieceWeight = 5;
         float targetingWeight = 0.4f;
         float positionWeight = 0.2f;
-        float notMovingPenalty = .1f;
+        float inactivePenalty = .1f;
         float randomizationWeight = 0;//0.01f;
         findAllPieces(false);
         float value = (calculatePieceScore(pieceWeight) +
                        calculateTargetingScore(targetingWeight, pieceWeight) +
                        calculateChampionScore(championWeight, targetingWeight) +
-                       calculatePositionScore(positionWeight, notMovingPenalty)) *
+                       calculatePositionScore(positionWeight, inactivePenalty)) *
                        (1 + (Random.Range(0, 10000) / 10000f) * randomizationWeight);
         //Debug.Log("position value: " + value);
         return value;
@@ -256,15 +257,19 @@ public class enemyManager : MonoBehaviour
     //awards points to each enemy piece based on its proximity to any objective the enemy doesnt already control
     //penalizes pieces slightly for not moving
     //assumes findAllPieces has already been called
-    public float calculatePositionScore(float positionWeight, float notMovingPenalty)
+    public float calculatePositionScore(float positionWeight, float inactivePenalty)
     {
         float positionScore = 0;
         for (int i = 0; i < enemyPieces.Count; i++)
         {
             positionScore -= Mathf.Abs(enemyPieces[i].hypoTile.hypoChampionDists[0] - enemyPieces[i].getDesiredRange());//penalize each piece for being farther than min range from the player's champion
-            if (enemyPieces[i].notMoving)
+            if (enemyPieces[i].inactive)
             {
-                positionScore -= notMovingPenalty;
+                positionScore -= inactivePenalty;
+            }
+            if (enemyPieces[i].wastingAttackOnAlly)
+            {
+                positionScore -= inactivePenalty * 3;//should basically never happen
             }
         }
         //should we also reward the ai for keeping its champion far away from the player's pieces? maybe with lower weight?
@@ -273,7 +278,7 @@ public class enemyManager : MonoBehaviour
     }
 
     //decide which pieces to place and setting their intentions, using hypo board after other moves are done
-    public void decidePlacements()
+    /*public void decidePlacements()
     {
         prepareSpawns();
         bool stillPlacing = true;
@@ -321,22 +326,37 @@ public class enemyManager : MonoBehaviour
                 reversableMove thisPlacement = new reversableMove(currentPiece);
                 bm.undoMove(thisPlacement, false);
 
-                /*currentPiece.getCaptured(false);
-                List<piece> retargeted = new List<piece>();
-                retargeted.Add(currentPiece);
-                spawnTiles[i].updateTargeting(false, ref retargeted);*/
+                //currentPiece.getCaptured(false);
+                //List<piece> retargeted = new List<piece>();
+                //retargeted.Add(currentPiece);
+                //spawnTiles[i].updateTargeting(false, ref retargeted);
             }
             //place piece on hypo board
-            currentPiece.hypoAlive = true;
+            //currentPiece.hypoAlive = true;
             currentPiece.placePiece(bestTile, false);
             currentPiece.useSummonAbility(false);
-            currentPiece.payEnergyCost();
+            currentPiece.payEnergyCost();//also pays summons cost
             //plan to place piece in move order
             moveOrder.Add(currentPiece);
             currentPiece.intention = bestTile;
             spawnTiles.Remove(bestTile);
         }
         readyToEnd = true; //allows piece moving coroutine to end turn when ready
+    }*/
+
+    public tile[] findSpawnTiles()
+    {
+        List<tile> spawnTilesList = new List<tile>();
+        for (int i = 0;i<bm.allTiles.Length;i++)
+        {
+            if (bm.allTiles[i].isValidPlacement(1,false))
+            {
+                spawnTilesList.Add(bm.allTiles[i]);
+            }
+        }
+        tile[] spawnTiles = new tile[spawnTilesList.Count];
+        spawnTilesList.CopyTo(spawnTiles);
+        return spawnTiles;
     }
 
     //determines the order in which the ai will consider its pieces
@@ -348,10 +368,18 @@ public class enemyManager : MonoBehaviour
         int minDist = 10000;;
         int currDist;
         piece firstPiece = null;
+        for (int i = 0; i < spawnPlan.Count; i++)//start by looking at spawns as our last choice
+        {
+            if (spawnPlan[i].readyToSummon && !spawnPlan[i].beingSummoned)
+            {
+                firstPiece = spawnPlan[i];
+                break;
+            }
+        }
         //find piece that can move which is closest to the players champion
         for (int i = 0; i < enemyPieces.Count; i++)
         {
-            if (enemyPieces[i].hypoExhausted == false && enemyPieces[i].notMoving == false && enemyPieces[i].hypoAlive == true)
+            if (enemyPieces[i].hypoExhausted == false && enemyPieces[i].inactive == false && enemyPieces[i].hypoAlive == true)
             {
                 if (firstPiece == null)
                 {
@@ -365,43 +393,58 @@ public class enemyManager : MonoBehaviour
                 }
             }
         }
-        if (firstPiece == null)//all pieces have made decisions
+        if (firstPiece == null)//all existing and new pieces have made decisions
         {
             return;
         }
         decideOrder.Add(firstPiece);
 
-        Queue q = new Queue();
-        bm.resetTiles();
-        tile activeTile = firstPiece.hypoTile;
-        tile otherTile;
-        q.Enqueue(activeTile);
-        activeTile.distance = 0;
-        while (q.Count > 0 && decideOrder.Count < turnGroupSize)//no need to prepare more than our group size if we are refilling after each piece anyway
+        if (firstPiece.hypoTile != null)//if firstPiece is new placement, no need to search out other pieces to move
         {
-            activeTile = (tile)q.Dequeue();
-            if (activeTile.hypoPiece != null && 
-                activeTile.hypoPiece.team == 1 && 
-                activeTile.hypoPiece.hypoExhausted == false && 
-                activeTile.hypoPiece.notMoving == false && 
-                activeTile.hypoPiece.hypoAlive == true &&
-                !decideOrder.Contains(activeTile.hypoPiece))
+            Queue q = new Queue();
+            bm.resetTiles();
+            tile activeTile = firstPiece.hypoTile;
+            tile otherTile;
+            q.Enqueue(activeTile);
+            activeTile.distance = 0;
+            while (q.Count > 0 && decideOrder.Count < turnGroupSize)//no need to prepare more than our group size if we are refilling after each piece anyway
             {
-                //here we have a nearby enemy(ai controlled) piece which has not yet moved/decided
-                decideOrder.Add(activeTile.hypoPiece);
-            }
-
-            for (int i = 0; i < activeTile.neighbors.Length; i++)
-            {
-                if (activeTile.neighbors[i] != null)
+                activeTile = (tile)q.Dequeue();
+                if (activeTile.hypoPiece != null && 
+                    activeTile.hypoPiece.team == 1 && 
+                    activeTile.hypoPiece.hypoExhausted == false && 
+                    activeTile.hypoPiece.inactive == false && 
+                    activeTile.hypoPiece.hypoAlive == true &&
+                    !decideOrder.Contains(activeTile.hypoPiece))
                 {
-                    otherTile = activeTile.neighbors[i];
-                    if (otherTile.distance > activeTile.distance + 1)
+                    //here we have a nearby enemy(ai controlled) piece which has not yet moved/decided
+                    decideOrder.Add(activeTile.hypoPiece);
+                }
+
+                for (int i = 0; i < activeTile.neighbors.Length; i++)
+                {
+                    if (activeTile.neighbors[i] != null)
                     {
-                        q.Enqueue(otherTile);
-                        otherTile.distance = activeTile.distance + 1;
+                        otherTile = activeTile.neighbors[i];
+                        if (otherTile.distance > activeTile.distance + 1)
+                        {
+                            q.Enqueue(otherTile);
+                            otherTile.distance = activeTile.distance + 1;
+                        }
                     }
                 }
+            }
+        }
+        //now, add new spawns to the end of the order if needed
+        for (int i = 0; i < spawnPlan.Count; i++)
+        {
+            if (decideOrder.Count >= turnGroupSize)
+            {
+                break;
+            }
+            if (spawnPlan[i].readyToSummon && !spawnPlan[i].beingSummoned)
+            {
+                decideOrder.Add(spawnPlan[i]);
             }
         }
     }
@@ -484,6 +527,7 @@ public class enemyManager : MonoBehaviour
                 spawnDelay = spawnDelayMax;
             }
             bm.placeNewPiece(currentPiece, currentPiece.intention);
+            spawnPlan.Remove(currentPiece);
         }
     }
 
@@ -622,15 +666,21 @@ public class enemyManager : MonoBehaviour
     }
 
     //unexhaust all pieces 
-    public void unexhaustPieces()
+    public void resetPieces()
     {
         for (int i = 0;i< bm.alivePieces.Count;i++)
         {
             bm.alivePieces[i].exhausted = false;
             bm.alivePieces[i].hypoExhausted = false;
-            bm.alivePieces[i].notMoving = false;
-            bm.alivePieces[i].usedActivatedAbility = false;
-            bm.alivePieces[i].activatingAbility = false;
+            if (!bm.playersTurn)//only clear the AI variables before using so they can be seen while debugging
+            {
+                bm.alivePieces[i].inactive = false;
+                bm.alivePieces[i].wastingAttackOnAlly = false;
+                bm.alivePieces[i].usedActivatedAbility = false;
+                bm.alivePieces[i].activatingAbility = false;
+                bm.alivePieces[i].readyToSummon = false;
+                bm.alivePieces[i].beingSummoned = false;
+            }
             bm.alivePieces[i].setColor();
         }
     }
@@ -660,14 +710,28 @@ public class enemyManager : MonoBehaviour
         gm.champions[1] = newPiece;
     }
 
+    //refills list of pieces to spawn soon
+    //marks pieces as ready so spawn if we have enough energy and summons to play them this turn
     public void prepareSpawns()
     {
         for (int i = spawnPlan.Count; i < 10; i++)
         {
-            piece newPiece = Instantiate(gm.Pieces[Random.Range(0, gm.Pieces.Length)], new Vector3(1000, 1000, 0), Quaternion.identity).GetComponent<piece>();
+            piece newPiece = Instantiate(gm.Pieces[4]/*Random.Range(0, gm.Pieces.Length)]*/, new Vector3(1000, 1000, 0), Quaternion.identity).GetComponent<piece>();
             newPiece.team = 1;
             newPiece.init();
             spawnPlan.Add(newPiece);
+        }
+
+        int j = 0;
+        float currEnergy = bm.enemyEnergy;
+        int summonsRemaining = bm.playsRemaining; 
+        while(j < spawnPlan.Count && summonsRemaining > 0 && currEnergy >= spawnPlan[j].cost)//gives up after first piece which it can't afford, so AI will save up and not skip
+        {
+            spawnPlan[j].readyToSummon = true;
+            spawnPlan[j].beingSummoned = false;
+            currEnergy -= spawnPlan[j].cost;
+            summonsRemaining--;
+            j++;
         }
     }
 
@@ -676,11 +740,10 @@ public class enemyManager : MonoBehaviour
     public IEnumerator decideActions()
     {
         readyToEnd = false;
-        turnGroupSize = groupSize;// - 1;//set lower so first decision can be made quickly
+        turnGroupSize = groupSize;
         lastYieldTime = Time.realtimeSinceStartup;
         moveOrder = new List<piece>();
         orderPieces();
-        //turnGroupSize++;//set to full value because we can think while pieces move now
         while (decideOrder.Count > 0)//choose a single piece action each loop
         {
             //create stack 
@@ -703,19 +766,29 @@ public class enemyManager : MonoBehaviour
                 if (current.targetListCopy == null || (current.tileIndex >= current.targetListCopy.Length && (current.abilityIndex >= current.abilityListCopy.Length ||
                                                                                                               current.abilityListCopy.Length == 0)))//here we dont have a piece to analyze
                 {
-                    do
+                    do //while this piece is not suitable, find a piece that isnt exhausted or dead, or is ready to summon and not yet being summoned
                     {
                         current.pieceIndex += 1;//advance outer (piece) loop
                     } while (current.pieceIndex < decideOrder.Count && current.pieceIndex < turnGroupSize && 
-                            (decideOrder[current.pieceIndex].hypoExhausted || !decideOrder[current.pieceIndex].hypoAlive));//find a piece that isnt exhausted or dead
+                            ((decideOrder[current.pieceIndex].hypoExhausted || !decideOrder[current.pieceIndex].hypoAlive) && 
+                             (!decideOrder[current.pieceIndex].readyToSummon || decideOrder[current.pieceIndex].beingSummoned)));
                     if (current.pieceIndex < decideOrder.Count && current.pieceIndex < turnGroupSize)//here we have a new piece to analyze
                     {
-                        current.tileIndex = -1;//start at -1 to consider not moving first
-                        current.targetListCopy = new tile[decideOrder[current.pieceIndex].hypoTargets.Count];
-                        decideOrder[current.pieceIndex].hypoTargets.CopyTo(current.targetListCopy);
-                        current.abilityIndex = -1;//start at -1 so we can increment to 0 before using
-                        current.abilityListCopy = new tile[decideOrder[current.pieceIndex].hypoAbilityTargets.Count];
-                        decideOrder[current.pieceIndex].hypoAbilityTargets.CopyTo(current.abilityListCopy);
+                        if (decideOrder[current.pieceIndex].readyToSummon && !decideOrder[current.pieceIndex].beingSummoned)
+                        {
+                            current.tileIndex = 0;
+                            current.targetListCopy = findSpawnTiles();
+                            current.abilityListCopy = new tile[0];
+                        }
+                        else
+                        {
+                            current.tileIndex = -1;//start at -1 to consider not moving first
+                            current.targetListCopy = new tile[decideOrder[current.pieceIndex].hypoTargets.Count];
+                            decideOrder[current.pieceIndex].hypoTargets.CopyTo(current.targetListCopy);
+                            current.abilityIndex = -1;//start at -1 so we can increment to 0 before using
+                            current.abilityListCopy = new tile[decideOrder[current.pieceIndex].hypoAbilityTargets.Count];
+                            decideOrder[current.pieceIndex].hypoAbilityTargets.CopyTo(current.abilityListCopy);
+                        }
                     }
                 }
                 //consider going up
@@ -740,7 +813,8 @@ public class enemyManager : MonoBehaviour
             }
             orderPieces();
         }
-        decidePlacements();
+        readyToEnd = true;
+        //decidePlacements();
     }
 
     //moves up one level in position evaluation, updating stack item above and reverting hypo move
@@ -786,6 +860,7 @@ public class enemyManager : MonoBehaviour
         //undo hypo move
         reversableMove thisMove = new reversableMove(decideOrder[above.pieceIndex], above.previousTile, above.attackedPiece, above.capturedPiece);
         bm.undoMove(thisMove, false);
+        above.previousTile = null;
         above.capturedPiece = null;
         above.attackedPiece = null;
 
@@ -795,11 +870,20 @@ public class enemyManager : MonoBehaviour
 
     public void goDownLevel(recursiveActionItem current)
     {
-        if (current.tileIndex == -1)//piece inactive
+        if (decideOrder[current.pieceIndex].readyToSummon)
         {
-            //make hypo move
+            //summon hypo piece
+            if (!(current.tileIndex < current.targetListCopy.Length && current.targetListCopy[current.tileIndex].isValidPlacement(1,false)))
+            {
+                return;
+            }
+            makeHypoMove(current);
+        }
+        else if (current.tileIndex == -1)//piece inactive
+        {
+            //make hypo non-move
             decideOrder[current.pieceIndex].hypoExhausted = true;
-            decideOrder[current.pieceIndex].notMoving = true;
+            decideOrder[current.pieceIndex].inactive = true;
             current.previousTile = decideOrder[current.pieceIndex].hypoTile;
         }
         else if (current.abilityListCopy != null && current.abilityListCopy.Length > 0 && current.tileIndex >= current.targetListCopy.Length)//here we've already considered all normal moves
@@ -835,7 +919,14 @@ public class enemyManager : MonoBehaviour
             makeBestHypoMove(current);
             return;
         }
-        else if (current.abilityListCopy != null && current.abilityListCopy.Length > 0 && current.tileIndex >= current.targetListCopy.Length)
+        else if (decideOrder[current.pieceIndex].readyToSummon)//summon new piece
+        {
+            decideOrder[current.pieceIndex].beingSummoned = true;
+            decideOrder[current.pieceIndex].placePiece(current.targetListCopy[current.tileIndex], false);
+            decideOrder[current.pieceIndex].useSummonAbility(false);
+            return;
+        }
+        else if (current.abilityListCopy != null && current.abilityListCopy.Length > 0 && current.tileIndex >= current.targetListCopy.Length)//use ability
         {
             decideOrder[current.pieceIndex].useActivatedAbility(current.abilityListCopy[current.abilityIndex], false);
             decideOrder[current.pieceIndex].usedActivatedAbility = true;
@@ -858,19 +949,30 @@ public class enemyManager : MonoBehaviour
             if (current.attackedPiece != null)
             {
                 decideOrder[current.pieceIndex].dealDamage(current.attackedPiece, decideOrder[current.pieceIndex].damage, false);
+                decideOrder[current.pieceIndex].wastingAttackOnAlly = (decideOrder[current.pieceIndex].attackHasNoEffect(current.attackedPiece, decideOrder[current.pieceIndex].damage) &&
+                                                                       current.attackedPiece.team == decideOrder[current.pieceIndex].team);
             }
         }
     }
 
     public void makeBestHypoMove(recursiveActionItem current)
     {
-        
-        if (current.usingAbility)
+        if (current.bestPiece.readyToSummon)//summon new piece
+        {
+            current.bestPiece.readyToSummon = false;
+            current.bestPiece.beingSummoned = true;
+            current.bestPiece.placePiece(current.bestTile, false);
+            current.bestPiece.useSummonAbility(false);
+            current.bestPiece.payEnergyCost();//also pays summons cost
+            return;
+        }
+        if (current.usingAbility)//use ability
         {
             current.bestPiece.useActivatedAbility(current.bestTile, false);
             current.bestPiece.usedActivatedAbility = true;
             return;
         }
+        
         if (current.bestTile.hypoPiece != null && 
             current.bestTile.hypoPiece != current.bestPiece &&
             current.bestTile.hypoPiece.willGetCaptured(current.bestPiece, false))//here we are capturing a piece
@@ -884,12 +986,14 @@ public class enemyManager : MonoBehaviour
         }
         else if(current.bestTile == current.bestPiece.hypoTile)//here we aren't moving
         {
-            current.bestPiece.notMoving = true;
+            current.bestPiece.inactive = true;
         }
         current.bestPiece.moveToTile(current.bestTile, false);//we must move after capturing but before dealing damage
         if (current.attackedPiece != null)
         {
             current.bestPiece.dealDamage(current.attackedPiece, current.bestPiece.damage, false);
+            current.bestPiece.wastingAttackOnAlly = (current.bestPiece.attackHasNoEffect(current.attackedPiece, current.bestPiece.damage) &&
+                                                     current.attackedPiece.team == current.bestPiece.team);
             current.attackedPiece = null;
         }
         current.bestPiece.pushedPieces = null;//shouldnt matter

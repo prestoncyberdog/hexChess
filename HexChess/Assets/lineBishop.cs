@@ -52,4 +52,9 @@ public class lineBishop : piece
         bm.undoPushes(pushedPieces, real);
         pushedPieces = null;
     }
+
+    public override bool attackHasNoEffect(piece target, float damageAmount)
+    {
+        return false;
+    }
 }

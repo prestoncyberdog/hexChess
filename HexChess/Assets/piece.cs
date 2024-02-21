@@ -56,7 +56,10 @@ public class piece : MonoBehaviour
     public tile turnStartTile;
     public piece capturing;
     public piece attacking;
-    public bool notMoving;
+    public bool inactive;
+    public bool wastingAttackOnAlly;
+    public bool readyToSummon;
+    public bool beingSummoned;
     public List<tile> stepPath;
 
     public bool hasActivatedAbility;
@@ -141,11 +144,11 @@ public class piece : MonoBehaviour
     public virtual void useDeathAbility(bool real){}
     public virtual void undoDeathAbility(bool real){}
 
-    //does not include exhausting new pieces
     public void placePiece(tile targetTile, bool real)
     {
         if (real)
         {
+            exhausted = true;
             alive = true;
             if (!bm.alivePieces.Contains(this))
             {
@@ -170,6 +173,7 @@ public class piece : MonoBehaviour
             hypoAlive = true;
             hypoTile = targetTile;
             hypoTile.hypoPiece = this;
+            hypoExhausted = true;
         }
         updateTargeting(real);
         if (real)
@@ -772,7 +776,11 @@ public class piece : MonoBehaviour
             hypoTargets = new List<tile>();
         }
 
-        if (moveType == STEP)
+        if (moveRange == 1)
+        {
+            planPathsRange1(real);
+        }
+        else if (moveType == STEP)
         {
             planPathsWithObtacles(real); 
         }
@@ -823,7 +831,37 @@ public class piece : MonoBehaviour
         launch.init();
     }
 
+    public virtual bool attackHasNoEffect(piece target, float damageAmount)
+    {
+        return target.expectedDamage(damageAmount) == 0;
+    }
+
+    //fills targets or hypo targets with adjacent tiles, since any move type works the same at range 1
+    public void planPathsRange1 (bool real)
+    {
+        tile activeTile = realOrHypoTile(real);
+        tile otherTile;
+        for (int i = 0; i < activeTile.neighbors.Length; i++)
+        {
+            if (activeTile.neighbors[i] != null)
+            {
+                otherTile = activeTile.neighbors[i];
+                if (real && !targets.Contains(otherTile))
+                {
+                    otherTile.targetedBy.Add(this);
+                    targets.Add(otherTile);
+                }
+                else if (!real && !hypoTargets.Contains(otherTile))
+                {
+                    otherTile.hypoTargetedBy.Add(this);
+                    hypoTargets.Add(otherTile);
+                }
+            }
+        }
+    }
+
     //breadth first search of tiles not recursing on unavailable tiles
+    //outputs targets or hypoTargets
     private void planPathsWithObtacles(bool real)
     {
         Queue q = new Queue();

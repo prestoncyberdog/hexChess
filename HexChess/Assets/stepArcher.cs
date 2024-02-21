@@ -52,6 +52,10 @@ public class stepArcher : piece
         {
             dealDamage(shotAt, shootDamage, real);
             hypoExhausted = true;
+            if (attackHasNoEffect(shotAt, shootDamage) && shotAt.team == team)
+            {
+                wastingAttackOnAlly = true;
+            }
         }
     }
 
