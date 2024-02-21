@@ -56,8 +56,8 @@ public class enemyManager : MonoBehaviour
     public void takeTurn()
     {
         bm.changeTurn(1);
-        findAllPieces(true);
         copyHypoBoard();
+        findAllPieces(true);
         prepareSpawns();
         StartCoroutine(decideActions());
         StartCoroutine(moveAllPieces());
@@ -69,11 +69,11 @@ public class enemyManager : MonoBehaviour
     {
         //these values can balance how much the ai values different measures
         float championWeight = 2;//bonus multiplier on piece value
-        float pieceWeight = 5;
+        float pieceWeight = 4;
         float targetingWeight = 0.4f;
         float positionWeight = 0.2f;
         float inactivePenalty = .1f;
-        float randomizationWeight = 0;//0.01f;
+        float randomizationWeight = 0.01f;
         findAllPieces(false);
         float value = (calculatePieceScore(pieceWeight) +
                        calculateTargetingScore(targetingWeight, pieceWeight) +
@@ -683,6 +683,11 @@ public class enemyManager : MonoBehaviour
             }
             bm.alivePieces[i].setColor();
         }
+        for (int i = 0;i < spawnPlan.Count;i++)
+        {
+            spawnPlan[i].readyToSummon = false;
+            spawnPlan[i].beingSummoned = false;
+        }
     }
 
     public void copyTileList(List<tile> original, List<tile> copy)
@@ -716,7 +721,7 @@ public class enemyManager : MonoBehaviour
     {
         for (int i = spawnPlan.Count; i < 10; i++)
         {
-            piece newPiece = Instantiate(gm.Pieces[4]/*Random.Range(0, gm.Pieces.Length)]*/, new Vector3(1000, 1000, 0), Quaternion.identity).GetComponent<piece>();
+            piece newPiece = Instantiate(gm.Pieces[Random.Range(0, gm.Pieces.Length)], new Vector3(1000, 1000, 0), Quaternion.identity).GetComponent<piece>();
             newPiece.team = 1;
             newPiece.init();
             spawnPlan.Add(newPiece);
@@ -822,6 +827,20 @@ public class enemyManager : MonoBehaviour
     {
         if (stack.Count == 1)//here we can't go up so we return our result
         {
+            if (current.bestPiece == null)//we found no legal moves at all, probably no legal tiles to summon
+            {
+                while (decideOrder.Count > 0)//make sure none of these pieces are considered for actions again
+                {
+                    decideOrder[0].hypoExhausted = true;
+                    decideOrder[0].beingSummoned = true;
+                    decideOrder[0].inactive = true;
+                    decideOrder.RemoveAt(0);
+                }
+                stack.RemoveAt(0);
+                Debug.Log("No legal actions in decideActions");
+                return;
+            }
+
             current.attackedPiece = null;
             //update hypo board to include new move
             makeHypoMove(current);
@@ -858,9 +877,12 @@ public class enemyManager : MonoBehaviour
         }
 
         //undo hypo move
+        if (decideOrder[above.pieceIndex].readyToSummon)
+        {
+            above.previousTile = null;//so that undo move knows to undo placement
+        }
         reversableMove thisMove = new reversableMove(decideOrder[above.pieceIndex], above.previousTile, above.attackedPiece, above.capturedPiece);
         bm.undoMove(thisMove, false);
-        above.previousTile = null;
         above.capturedPiece = null;
         above.attackedPiece = null;
 
@@ -890,6 +912,7 @@ public class enemyManager : MonoBehaviour
         {
             if (!(decideOrder[current.pieceIndex].isValidAbilityTarget(current.abilityListCopy[current.abilityIndex], false)))
             {
+                //current.previousTile = decideOrder[current.pieceIndex].hypoTile;
                 return;//not a valid ability target, do nothing
             }
             makeHypoMove(current);
@@ -928,6 +951,7 @@ public class enemyManager : MonoBehaviour
         }
         else if (current.abilityListCopy != null && current.abilityListCopy.Length > 0 && current.tileIndex >= current.targetListCopy.Length)//use ability
         {
+            //current.previousTile = decideOrder[current.pieceIndex].hypoTile;//needed to avoid undo treating this as a placement
             decideOrder[current.pieceIndex].useActivatedAbility(current.abilityListCopy[current.abilityIndex], false);
             decideOrder[current.pieceIndex].usedActivatedAbility = true;
             return;
@@ -972,7 +996,7 @@ public class enemyManager : MonoBehaviour
             current.bestPiece.usedActivatedAbility = true;
             return;
         }
-        
+
         if (current.bestTile.hypoPiece != null && 
             current.bestTile.hypoPiece != current.bestPiece &&
             current.bestTile.hypoPiece.willGetCaptured(current.bestPiece, false))//here we are capturing a piece

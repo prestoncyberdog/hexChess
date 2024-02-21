@@ -152,6 +152,7 @@ public class battleManager : MonoBehaviour
             else
             {
                 lastMove.movedPiece.hypoExhausted = false;
+                lastMove.movedPiece.inactive = false;
                 lastMove.movedPiece.wastingAttackOnAlly = false;//can include wasting abilities
             }
             return;

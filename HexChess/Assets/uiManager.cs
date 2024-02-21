@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -159,19 +159,9 @@ public class uiManager : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.Z))
         {
-            if (bm.playersTurn &&
-                bm.selectedPiece != null &&
-                bm.selectedPiece.team == 0 &&
-                bm.selectedPiece.alive && 
-                !bm.selectedPiece.exhausted &&
-                bm.selectedPiece.hasActivatedAbility)
+            if (bm.selectedPiece != null)
             {
-                for (int i = 0; i<bm.allTiles.Length; i++)
-                {
-                    bm.allTiles[i].setColor();
-                }
-                bm.selectedPiece.highlightAbilityCandidates();
-                bm.selectedPiece.activatingAbility = true;
+                bm.selectedPiece.startUsingAbility();
             }
         }
 

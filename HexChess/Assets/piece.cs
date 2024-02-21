@@ -653,13 +653,27 @@ public class piece : MonoBehaviour
 
     public void unGetCaptured(tile location, bool real)
     {
-        placePiece(location, real);
+        bool oldExhausted;
+        if (real)
+        {
+            oldExhausted = exhausted;
+        }
+        else
+        {
+            oldExhausted = hypoExhausted;
+        }
+        placePiece(location, real);//unfortunately sets exhausted now
         if (real)
         {
             bm.recentlyCaptured.Remove(this);
             transform.position = thisTile.transform.position;
             thisHealthBar.setPositions();
             thisHealthBar.setColors();
+            exhausted = oldExhausted;
+        }
+        else
+        {
+            hypoExhausted = oldExhausted;
         }
     }
 

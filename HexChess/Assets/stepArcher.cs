@@ -14,10 +14,10 @@ public class stepArcher : piece
         pieceName = "Archer";
         moveType = STEP;
         moveRange = 1;
-        cost = 3;
+        cost = 4;
         maxHealth = 2;
         damage = 0;
-        qualityBonus = .5f;
+        qualityBonus = 0;
 
         hasActivatedAbility = true;
         shootRange = 2;
