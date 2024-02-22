@@ -10,6 +10,7 @@ public class piece : MonoBehaviour
     public const int STEP = 0;
     public const int LINE = 1;
     public const int JUMP = 2;
+    public const int ROOTED = 3;
 
     public Color playerColor;
     public Color exhaustedPlayerColor;
@@ -24,7 +25,7 @@ public class piece : MonoBehaviour
     public float qualityBonus;
     public int team;
     public bool champion;
-    public tile intention;//used by AI
+    public List<tile> intentions;//used by AI
 
     public tile thisTile;
     public bool exhausted;
@@ -61,6 +62,8 @@ public class piece : MonoBehaviour
     public bool readyToSummon;
     public bool beingSummoned;
     public List<tile> stepPath;
+    public bool ephemeral;//for pieces summoned once only by player
+    public bool resummonableByEnemy;
 
     public bool hasActivatedAbility;
     public bool activatingAbility;
@@ -78,12 +81,14 @@ public class piece : MonoBehaviour
         exhaustedPlayerColor = playerColor;// new Color(0.4f, 0.4f, 1f);
         enemyColor = new Color(1f, 0.2f, 0.2f);
         exhaustedEnemyColor = enemyColor;// new Color(1f, 0.4f, 0.4f);
+        List<tile> intentions = new List<tile>();
 
         cost = 1;
         maxHealth = 5;
         damage = 3;
         champion = false;
         exhausted = false;
+        resummonableByEnemy = false;
         if (thisTile != null)
         {
             alive = true;
@@ -144,6 +149,17 @@ public class piece : MonoBehaviour
     public virtual void useDeathAbility(bool real){}
     public virtual void undoDeathAbility(bool real){}
 
+    public virtual void useTurnChangeAbility(){}
+
+    public virtual void destroyAll()
+    {
+        if (thisHealthBar != null)
+        {
+            thisHealthBar.destroyAll();
+        }
+        Destroy(gameObject);
+    }
+
     public void placePiece(tile targetTile, bool real)
     {
         if (real)
@@ -166,6 +182,11 @@ public class piece : MonoBehaviour
             {
                 thisHealthBar = Instantiate(gm.HealthBar, gm.AWAY, Quaternion.identity).GetComponent<healthBar>();
                 thisHealthBar.owner = this;
+            }
+            else
+            {
+                thisHealthBar.reactivate();
+                thisHealthBar.setPositions();
             }
         }
         else //here its a move on the hypo board
@@ -315,7 +336,7 @@ public class piece : MonoBehaviour
         transform.position = newTile.transform.position;
         setColor();
 
-        if (pushedTile == null && exhausted == false)//make sure its a real forward move by us
+        if (pushedTile == null && exhausted == false && !bm.undoing)//make sure its a real forward move by us
         {
             exhausted = true;
             if (newTile != oldTile)//make sure to not use ability on move undo, when pushed, or when stationary
@@ -333,6 +354,7 @@ public class piece : MonoBehaviour
             thisTile.thisPiece = this;
             updateTargeting(true);
             capturing = null;
+            useKillAbility(true);
         }
         newTile = null;
         oldTile = null;
@@ -374,6 +396,10 @@ public class piece : MonoBehaviour
 
     public void pushPiece(int direction, bool real)
     {
+        if (moveType == ROOTED)
+        {
+            return;
+        }
         tile currTile = realOrHypoTile(real);
         piece otherPiece = null;
         if (currTile.neighbors[direction] == null)
@@ -492,8 +518,10 @@ public class piece : MonoBehaviour
         }
         else
         {
+            bool wastingAttackOnAlly = (target.hypoPiece != null && target.hypoPiece.team == team && attackHasNoEffect(target.hypoPiece, damage));
             return (target.hypoObstacle == 0 &&
-                    hypoExhausted == false);// && (target.hypoPiece == null || target.hypoPiece.team != team));
+                    hypoExhausted == false &&
+                    !wastingAttackOnAlly);// && (target.hypoPiece == null || target.hypoPiece.team != team));
         }
     }
 
@@ -612,6 +640,10 @@ public class piece : MonoBehaviour
     //causes this piece to die, has nothing to do with capturing piece
     public void getCaptured(bool real)
     {
+        if (!bm.undoing)
+        {
+            useDeathAbility(real);
+        }
         if (real)
         {
             alive = false;
@@ -675,6 +707,7 @@ public class piece : MonoBehaviour
         {
             hypoExhausted = oldExhausted;
         }
+        undoDeathAbility(real);
     }
 
     public int getDesiredRange()
@@ -793,6 +826,10 @@ public class piece : MonoBehaviour
         if (moveRange == 1)
         {
             planPathsRange1(real);
+        }
+        else if (moveType == ROOTED)
+        {
+            //don't need to do anything, no target tiles
         }
         else if (moveType == STEP)
         {

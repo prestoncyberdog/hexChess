@@ -56,6 +56,9 @@ MonoBehaviour:
   - {fileID: 8495713364745786182, guid: a3f72a4024033ed48b8ca24bcc0943e5, type: 3}
   - {fileID: 7868086088779864826, guid: 9d42674a7a3d71e48b70f956d3f07eba, type: 3}
   - {fileID: 6530433343378775134, guid: c79b66c8220687745adca961c262844e, type: 3}
+  - {fileID: 2352994955324319878, guid: 79d6c0d094abb6d4eb387871cfbfadb8, type: 3}
+  - {fileID: 7670782464044811042, guid: 0c1ee7097561b3242a2558f37ae03c7f, type: 3}
+  - {fileID: 9020959713175142531, guid: 90d0ecca83c474d4f87a756f166174f0, type: 3}
   EnemyManager: {fileID: 3087165918241259408, guid: 113d1f631c9d9544e997ace5517c582d,
     type: 3}
   UIManager: {fileID: 8196796942768952676, guid: 90b2dc725f5a56e44b41fe5f962d3e93,
@@ -79,3 +82,6 @@ MonoBehaviour:
   champions: []
   AWAY: {x: 0, y: 0, z: 0}
   pushDamage: 0
+  moveRate: 0
+  pushMoveRate: 0
+  projectileMoveRate: 0

@@ -62,7 +62,7 @@ public class gameManager : MonoBehaviour
 
     public int chooseRandomChampion()
     {
-        int[] options = new int[]{1,5,6,7,8};
+        int[] options = new int[]{1,5,6,7,8,11,13};
         return options[Random.Range(0,options.Length)];
     }
 

@@ -12,6 +12,7 @@ public class battleManager : MonoBehaviour
 
     public tile[] allTiles;
     public List<piece> alivePieces;
+    public List<piece> allPieces;
     public List<piece> recentlyCaptured;
     public List<reversableMove> undoStack;
 
@@ -23,6 +24,7 @@ public class battleManager : MonoBehaviour
     public int playerEnergy;
     public float enemyEnergy;
     public int movingPieces;
+    public bool undoing;
 
     void Start()
     {
@@ -55,6 +57,7 @@ public class battleManager : MonoBehaviour
     public void changeTurn(int whosTurn)
     {
         clearUndoStorage();
+        //em.findAllPieces(true);
         playersTurn = (whosTurn == 0);
         giveTurnBonuses(whosTurn);
         em.resetPieces();
@@ -73,6 +76,11 @@ public class battleManager : MonoBehaviour
         {
             enemyEnergy += 2;
         }
+
+        for (int i = 0; i < alivePieces.Count; i++)
+        {
+            alivePieces[i].useTurnChangeAbility();
+        }
     }
 
     public void clearUndoStorage()
@@ -83,23 +91,29 @@ public class battleManager : MonoBehaviour
         }
         while (recentlyCaptured.Count > 0)
         {
-            while (alivePieces.Contains(recentlyCaptured[0]))
+            if (recentlyCaptured[0] != null)
             {
-                alivePieces.Remove(recentlyCaptured[0]);
-                Debug.LogError("Recently captured piece still listed as being alive");
-            }
-            if (recentlyCaptured[0].team == 0)
-            {
-                recentlyCaptured[0].cost = Mathf.Max(Mathf.Min(recentlyCaptured[0].cost * 2, 999), 1);
-                recentlyCaptured[0].deleteInfo();
-                recentlyCaptured[0].moveToSlot(um.findOpenSlot());
-            }
-            if (recentlyCaptured[0].team == 1)
-            {
-                recentlyCaptured[0].alive = false;
-                recentlyCaptured[0].hypoAlive = false;//this matters, or else the piece gets added to alivePieces again because unity is dumb
-                Destroy(recentlyCaptured[0].gameObject);
-                Destroy(recentlyCaptured[0]);
+                while (alivePieces.Contains(recentlyCaptured[0]))
+                {
+                    alivePieces.Remove(recentlyCaptured[0]);
+                    Debug.LogError("Recently captured piece still listed as being alive");
+                }
+                if (recentlyCaptured[0].team == 0 && !recentlyCaptured[0].ephemeral)
+                {
+                    recentlyCaptured[0].cost = Mathf.Max(Mathf.Min(recentlyCaptured[0].cost * 2, 999), recentlyCaptured[0].cost + 1);
+                    recentlyCaptured[0].deleteInfo();
+                    recentlyCaptured[0].moveToSlot(um.findOpenSlot());
+                }
+                else if (recentlyCaptured[0].team == 1 && recentlyCaptured[0].resummonableByEnemy)
+                {
+                    em.resummons.Add(recentlyCaptured[0]);
+                }
+                else// if (recentlyCaptured[0].team == 1 || recentlyCaptured[0].ephemeral)
+                {
+                    recentlyCaptured[0].alive = false;
+                    recentlyCaptured[0].hypoAlive = false;//this matters, or else the piece gets added to alivePieces again because unity is dumb
+                    recentlyCaptured[0].destroyAll();
+                }
             }
             recentlyCaptured.RemoveAt(0);
         }
@@ -111,8 +125,8 @@ public class battleManager : MonoBehaviour
     {
         newPiece.alive = true;
         newPiece.exhausted = true;
-        newPiece.placePiece(newTile, true);
         newPiece.transform.position = newTile.transform.position;
+        newPiece.placePiece(newTile, true);
         if (newPiece.thisSlot != null)
         {
             newPiece.thisSlot.thisPiece = null;
@@ -126,7 +140,7 @@ public class battleManager : MonoBehaviour
         newPiece.useSummonAbility(true);
         resetHighlighting();
 
-        if (newPiece.team == 0 && !newPiece.champion)
+        if (true)//newPiece.team == 0 && !newPiece.champion)
         {
             reversableMove thisPlacement = new reversableMove(newPiece);
             undoStack.Insert(0, thisPlacement);
@@ -135,6 +149,7 @@ public class battleManager : MonoBehaviour
 
     public void undoMove(reversableMove lastMove, bool real)
     {
+        undoing = true;
         if (lastMove.startingTile == null)
         {
             undoPlacement(lastMove, real);
@@ -155,6 +170,7 @@ public class battleManager : MonoBehaviour
                 lastMove.movedPiece.inactive = false;
                 lastMove.movedPiece.wastingAttackOnAlly = false;//can include wasting abilities
             }
+            undoing = false;
             return;
         }
 
@@ -163,6 +179,7 @@ public class battleManager : MonoBehaviour
         lastMove.movedPiece.moveToTile(lastMove.startingTile, real);
         if (lastMove.captured != null)
         {
+            lastMove.movedPiece.undoKillAbility(real);
             lastMove.captured.unGetCaptured(moveEndTile, real);
         }
         if (lastMove.attacked != null)
@@ -182,6 +199,7 @@ public class battleManager : MonoBehaviour
             lastMove.movedPiece.inactive = false;
             lastMove.movedPiece.wastingAttackOnAlly = false;
         }
+        undoing = false;
     }
 
     public void undoPlacement(reversableMove placement, bool real)
@@ -197,14 +215,18 @@ public class battleManager : MonoBehaviour
         {
             placement.movedPiece.exhausted = false;
             recentlyCaptured.Remove(placement.movedPiece);
-            placement.movedPiece.moveToSlot(um.findOpenSlot());
-            placement.movedPiece.refundEnergyCost();
+            if (!placement.movedPiece.ephemeral)
+            {
+                placement.movedPiece.moveToSlot(um.findOpenSlot());
+                placement.movedPiece.refundEnergyCost();
+            }
             resetHighlighting();
         }
         else
         {
             placement.movedPiece.hypoExhausted = false;
         }
+        undoing = false;
     }
 
     public void undoPushes(List<pushedPiece> pushedPieces, bool real)

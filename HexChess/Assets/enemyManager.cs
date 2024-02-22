@@ -10,6 +10,7 @@ public class enemyManager : MonoBehaviour
     public List<piece> playerPieces;
     public List<piece> enemyPieces;
     public List<piece> spawnPlan;
+    public List<piece> resummons;
     public List<piece> moveOrder;
     public List<piece> decideOrder; 
     public List<recursiveActionItem> stack;
@@ -243,7 +244,7 @@ public class enemyManager : MonoBehaviour
         //potentialIncomingDamage has already been calculated by the calculateTargetingScore function
         if (gm.champions[1].potentialIncomingDamage >= gm.champions[1].hypoHealth)
         {
-            champScore -= 10000;
+            champScore -= 8000;//lower because we still want the AI to kill this turn if it can
         }
         else
         {
@@ -269,6 +270,7 @@ public class enemyManager : MonoBehaviour
             }
             if (enemyPieces[i].wastingAttackOnAlly)
             {
+                Debug.LogError("Wasting attack on ally, which should not be possible");
                 positionScore -= inactivePenalty * 3;//should basically never happen
             }
         }
@@ -368,7 +370,15 @@ public class enemyManager : MonoBehaviour
         int minDist = 10000;;
         int currDist;
         piece firstPiece = null;
-        for (int i = 0; i < spawnPlan.Count; i++)//start by looking at spawns as our last choice
+        for (int i = 0; i < resummons.Count; i++)//start by looking at resummons as our last choice
+        {
+            if (resummons[i].readyToSummon && !resummons[i].beingSummoned)
+            {
+                firstPiece = resummons[i];
+                break;
+            }
+        }
+        for (int i = 0; i < spawnPlan.Count; i++)//start by looking at new spawns as our next last choice
         {
             if (spawnPlan[i].readyToSummon && !spawnPlan[i].beingSummoned)
             {
@@ -447,6 +457,18 @@ public class enemyManager : MonoBehaviour
                 decideOrder.Add(spawnPlan[i]);
             }
         }
+        //now, add new resummons to the end of the order if needed
+        for (int i = 0; i < resummons.Count; i++)
+        {
+            if (decideOrder.Count >= turnGroupSize)
+            {
+                break;
+            }
+            if (resummons[i].readyToSummon && !resummons[i].beingSummoned)
+            {
+                decideOrder.Add(resummons[i]);
+            }
+        }
     }
 
     public IEnumerator moveAllPieces()
@@ -503,16 +525,16 @@ public class enemyManager : MonoBehaviour
         {
             if (currentPiece.activatingAbility)
             {
-                currentPiece.useActivatedAbility(currentPiece.intention, true);
+                currentPiece.useActivatedAbility(currentPiece.intentions[0], true);
                 bm.resetHighlighting();
                 if (moveOrder.Count >  1 || !readyToEnd)
                 {
                     moveDelay = moveDelayMax;
                 }
             }
-            else if (currentPiece.intention != currentPiece.thisTile)
+            else if (currentPiece.intentions[0] != currentPiece.thisTile)
             {
-                currentPiece.moveToTile(currentPiece.intention, true);
+                currentPiece.moveToTile(currentPiece.intentions[0], true);
                 StartCoroutine(currentPiece.moveTowardsNewTile());
                 if (moveOrder.Count >  1 || !readyToEnd)
                 {
@@ -526,25 +548,28 @@ public class enemyManager : MonoBehaviour
             {
                 spawnDelay = spawnDelayMax;
             }
-            bm.placeNewPiece(currentPiece, currentPiece.intention);
+            bm.placeNewPiece(currentPiece, currentPiece.intentions[0]);
             spawnPlan.Remove(currentPiece);
+            resummons.Remove(currentPiece);
         }
+        currentPiece.intentions.RemoveAt(0);
     }
 
     //sets hypo board to match real board
     public void copyHypoBoard()
     {
-        for (int i = 0; i < bm.alivePieces.Count; i++)
+        findAllPieces(true);//fill bm.allPieces first
+        for (int i = 0; i < bm.allPieces.Count; i++)
         {
-            bm.alivePieces[i].hypoAlive = bm.alivePieces[i].alive;
-            bm.alivePieces[i].hypoHealth = bm.alivePieces[i].health;
-            bm.alivePieces[i].hypoTile = bm.alivePieces[i].thisTile;
-            bm.alivePieces[i].turnStartTile = bm.alivePieces[i].thisTile;
+            bm.allPieces[i].hypoAlive = bm.allPieces[i].alive;
+            bm.allPieces[i].hypoHealth = bm.allPieces[i].health;
+            bm.allPieces[i].hypoTile = bm.allPieces[i].thisTile;
+            bm.allPieces[i].turnStartTile = bm.allPieces[i].thisTile;
             //copy targets
-            bm.alivePieces[i].hypoTargets = new List<tile>();
-            bm.alivePieces[i].hypoAbilityTargets = new List<tile>();
-            copyTileList(bm.alivePieces[i].targets, bm.alivePieces[i].hypoTargets);
-            copyTileList(bm.alivePieces[i].abilityTargets, bm.alivePieces[i].hypoAbilityTargets);
+            bm.allPieces[i].hypoTargets = new List<tile>();
+            bm.allPieces[i].hypoAbilityTargets = new List<tile>();
+            copyTileList(bm.allPieces[i].targets, bm.allPieces[i].hypoTargets);
+            copyTileList(bm.allPieces[i].abilityTargets, bm.allPieces[i].hypoAbilityTargets);
         }
         for (int i = 0; i < bm.allTiles.Length; i++)
         {
@@ -632,7 +657,7 @@ public class enemyManager : MonoBehaviour
         }
     }
 
-    //finds all living pieces on real board or hypo board
+    //finds all pieces on real board or hypo board
     //fills playersPieces and enemyPieces regardless, only fills bm.alivePieces when run on real board
     public void findAllPieces(bool real)
     {
@@ -643,10 +668,15 @@ public class enemyManager : MonoBehaviour
         if (real)
         {
             bm.alivePieces = new List<piece>();
+            bm.allPieces = new List<piece>();
         }
         for (int i = 0;i < pieceGameObjects.Length;i++)
         {
             currentPiece = pieceGameObjects[i].GetComponent<piece>();
+            if (real)
+            {
+                bm.allPieces.Add(currentPiece);
+            }
             if (currentPiece.gameObject != null && ((real && currentPiece.alive) || (!real && currentPiece.hypoAlive)))
             {
                 if (real)
@@ -682,11 +712,21 @@ public class enemyManager : MonoBehaviour
                 bm.alivePieces[i].beingSummoned = false;
             }
             bm.alivePieces[i].setColor();
+            if (bm.alivePieces[i].intentions.Count != 0)
+            {
+                Debug.LogError("Piece failed to complete all intended actions.");
+                bm.alivePieces[i].intentions = new List<tile>();
+            }
         }
         for (int i = 0;i < spawnPlan.Count;i++)
         {
             spawnPlan[i].readyToSummon = false;
             spawnPlan[i].beingSummoned = false;
+        }
+        for (int i = 0;i < resummons.Count;i++)
+        {
+            resummons[i].readyToSummon = false;
+            resummons[i].beingSummoned = false;
         }
     }
 
@@ -735,6 +775,15 @@ public class enemyManager : MonoBehaviour
             spawnPlan[j].readyToSummon = true;
             spawnPlan[j].beingSummoned = false;
             currEnergy -= spawnPlan[j].cost;
+            summonsRemaining--;
+            j++;
+        }
+        j = 0;
+        while(j < resummons.Count && summonsRemaining > 0 && currEnergy >= resummons[j].cost)
+        {
+            resummons[j].readyToSummon = true;
+            resummons[j].beingSummoned = false;
+            currEnergy -= resummons[j].cost;
             summonsRemaining--;
             j++;
         }
@@ -797,7 +846,7 @@ public class enemyManager : MonoBehaviour
                     }
                 }
                 //consider going up
-                if (!(current.pieceIndex < decideOrder.Count && current.pieceIndex < turnGroupSize))
+                if (!(current.pieceIndex < decideOrder.Count && current.pieceIndex < turnGroupSize) || stack.Count > turnGroupSize)
                 {
                     if (current.bestVal == -1000000)//we did not manage to recurse on any other pieces
                     {
@@ -846,7 +895,7 @@ public class enemyManager : MonoBehaviour
             makeHypoMove(current);
 
             moveOrder.Add(current.bestPiece);
-            current.bestPiece.intention = current.bestTile;
+            current.bestPiece.intentions.Add(current.bestTile);
             current.bestPiece.activatingAbility = current.usingAbility;
             decideOrder.Remove(current.bestPiece);
 
@@ -976,6 +1025,10 @@ public class enemyManager : MonoBehaviour
                 decideOrder[current.pieceIndex].wastingAttackOnAlly = (decideOrder[current.pieceIndex].attackHasNoEffect(current.attackedPiece, decideOrder[current.pieceIndex].damage) &&
                                                                        current.attackedPiece.team == decideOrder[current.pieceIndex].team);
             }
+            if (current.capturedPiece != null)//after move so we can unexhaust for the bouncer
+            {
+                decideOrder[current.pieceIndex].useKillAbility(false);
+            }
         }
     }
 
@@ -997,10 +1050,12 @@ public class enemyManager : MonoBehaviour
             return;
         }
 
+        bool captured = false;
         if (current.bestTile.hypoPiece != null && 
             current.bestTile.hypoPiece != current.bestPiece &&
             current.bestTile.hypoPiece.willGetCaptured(current.bestPiece, false))//here we are capturing a piece
         {
+            captured = true;
             current.bestTile.hypoPiece.getCaptured(false);
         }
         else if (current.bestTile.hypoPiece != null && 
@@ -1019,6 +1074,10 @@ public class enemyManager : MonoBehaviour
             current.bestPiece.wastingAttackOnAlly = (current.bestPiece.attackHasNoEffect(current.attackedPiece, current.bestPiece.damage) &&
                                                      current.attackedPiece.team == current.bestPiece.team);
             current.attackedPiece = null;
+        }
+        if (captured)
+        {
+            current.bestPiece.useKillAbility(false);
         }
         current.bestPiece.pushedPieces = null;//shouldnt matter
     }

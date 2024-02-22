@@ -144,6 +144,10 @@ public class healthBar : MonoBehaviour
 
     public void updateText()
     {
+        if (owner == null || bm == null)
+        {
+            return;
+        }
         Camera c = Camera.main;
 
         Vector3 startPoint = owner.transform.position + new Vector3(-5.5f, .5f, 0);
