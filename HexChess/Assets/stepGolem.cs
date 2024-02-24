@@ -6,7 +6,7 @@ public class stepGolem : piece
 {
     public override void specificInit()
     {
-        pieceName = "Golem";
+        pieceName = "Ogre";
         moveType = STEP;
         moveRange = 1;
         cost = 6;

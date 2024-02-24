@@ -173,13 +173,13 @@ public class enemyManager : MonoBehaviour
 
                     if (canRetaliate)
                     {
-                        enemyPieces[i].pieceTargetingPenalty += (enemyPieces[i].expectedDamage(otherPiece.damage) * 1f / enemyPieces[i].maxHealth) * .5f * enemyPieces[i].value * pieceWeight * retaliationModifier;
+                        enemyPieces[i].pieceTargetingPenalty += (enemyPieces[i].expectedDamage(otherPiece.hypoDamage) * 1f / enemyPieces[i].maxHealth) * .5f * enemyPieces[i].value * pieceWeight * retaliationModifier;
                     }
                     else
                     {
-                        enemyPieces[i].pieceTargetingPenalty += (enemyPieces[i].expectedDamage(otherPiece.damage) * 1f / enemyPieces[i].maxHealth) * .5f * enemyPieces[i].value * pieceWeight;
+                        enemyPieces[i].pieceTargetingPenalty += (enemyPieces[i].expectedDamage(otherPiece.hypoDamage) * 1f / enemyPieces[i].maxHealth) * .5f * enemyPieces[i].value * pieceWeight;
                     }
-                    enemyPieces[i].potentialIncomingDamage += enemyPieces[i].expectedDamage(otherPiece.damage);
+                    enemyPieces[i].potentialIncomingDamage += enemyPieces[i].expectedDamage(otherPiece.hypoDamage);
                 }
             }
             //check if total is enough to capture
@@ -563,6 +563,7 @@ public class enemyManager : MonoBehaviour
         {
             bm.allPieces[i].hypoAlive = bm.allPieces[i].alive;
             bm.allPieces[i].hypoHealth = bm.allPieces[i].health;
+            bm.allPieces[i].hypoDamage = bm.allPieces[i].damage;
             bm.allPieces[i].hypoTile = bm.allPieces[i].thisTile;
             bm.allPieces[i].turnStartTile = bm.allPieces[i].thisTile;
             //copy targets
@@ -591,7 +592,8 @@ public class enemyManager : MonoBehaviour
         {
             if (!(bm.alivePieces[i].hypoAlive == bm.alivePieces[i].alive &&
                   bm.alivePieces[i].hypoHealth == bm.alivePieces[i].health &&
-                  bm.alivePieces[i].hypoTile == bm.alivePieces[i].thisTile))
+                  bm.alivePieces[i].hypoTile == bm.alivePieces[i].thisTile &&
+                  bm.alivePieces[i].hypoDamage == bm.alivePieces[i].damage))
             {
                 Debug.LogError("Hypo piece " + i + "  does not match real piece");
             }
@@ -761,7 +763,7 @@ public class enemyManager : MonoBehaviour
     {
         for (int i = spawnPlan.Count; i < 10; i++)
         {
-            piece newPiece = Instantiate(gm.Pieces[Random.Range(0, gm.Pieces.Length)], new Vector3(1000, 1000, 0), Quaternion.identity).GetComponent<piece>();
+            piece newPiece = Instantiate(gm.Pieces[Random.Range(19,20/*Pieces.Length*/)], new Vector3(1000, 1000, 0), Quaternion.identity).GetComponent<piece>();
             newPiece.team = 1;
             newPiece.init();
             spawnPlan.Add(newPiece);
@@ -886,7 +888,7 @@ public class enemyManager : MonoBehaviour
                     decideOrder.RemoveAt(0);
                 }
                 stack.RemoveAt(0);
-                Debug.Log("No legal actions in decideActions");
+                //Debug.Log("No legal actions in decideActions");
                 return;
             }
 
@@ -1021,8 +1023,8 @@ public class enemyManager : MonoBehaviour
             decideOrder[current.pieceIndex].moveToTile(current.targetListCopy[current.tileIndex], false);
             if (current.attackedPiece != null)
             {
-                decideOrder[current.pieceIndex].dealDamage(current.attackedPiece, decideOrder[current.pieceIndex].damage, false);
-                decideOrder[current.pieceIndex].wastingAttackOnAlly = (decideOrder[current.pieceIndex].attackHasNoEffect(current.attackedPiece, decideOrder[current.pieceIndex].damage) &&
+                decideOrder[current.pieceIndex].dealDamage(current.attackedPiece, decideOrder[current.pieceIndex].hypoDamage, false);
+                decideOrder[current.pieceIndex].wastingAttackOnAlly = (decideOrder[current.pieceIndex].attackHasNoEffect(current.attackedPiece, decideOrder[current.pieceIndex].hypoDamage) &&
                                                                        current.attackedPiece.team == decideOrder[current.pieceIndex].team);
             }
             if (current.capturedPiece != null)//after move so we can unexhaust for the bouncer
@@ -1070,8 +1072,8 @@ public class enemyManager : MonoBehaviour
         current.bestPiece.moveToTile(current.bestTile, false);//we must move after capturing but before dealing damage
         if (current.attackedPiece != null)
         {
-            current.bestPiece.dealDamage(current.attackedPiece, current.bestPiece.damage, false);
-            current.bestPiece.wastingAttackOnAlly = (current.bestPiece.attackHasNoEffect(current.attackedPiece, current.bestPiece.damage) &&
+            current.bestPiece.dealDamage(current.attackedPiece, current.bestPiece.hypoDamage, false);
+            current.bestPiece.wastingAttackOnAlly = (current.bestPiece.attackHasNoEffect(current.attackedPiece, current.bestPiece.hypoDamage) &&
                                                      current.attackedPiece.team == current.bestPiece.team);
             current.attackedPiece = null;
         }

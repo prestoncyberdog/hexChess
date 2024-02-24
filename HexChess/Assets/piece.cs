@@ -44,6 +44,7 @@ public class piece : MonoBehaviour
     public int health;
     public int maxHealth;
     public int damage;
+    public int hypoDamage;
     public int hypoHealth;
     public healthBar thisHealthBar;
 
@@ -54,6 +55,8 @@ public class piece : MonoBehaviour
     public tile pushedTile;
     public tile hypoPushedTile;
     public List<pushedPiece> pushedPieces;
+    public List<healedPiece> healedPieces;
+    public List<piece> damagedPieces;
     public tile turnStartTile;
     public piece capturing;
     public piece attacking;
@@ -101,6 +104,7 @@ public class piece : MonoBehaviour
         value = Mathf.Max((cost + qualityBonus + 1), 1);//may want to randomize this slightly?
         health = maxHealth;
         hypoHealth = health;
+        hypoDamage = damage;
         transform.localScale = new Vector3(transform.localScale.x * bm.generator.tileScale, transform.localScale.y * bm.generator.tileScale, 1);
         minAttackRange = 1;
         if (moveType == JUMP)
@@ -148,8 +152,12 @@ public class piece : MonoBehaviour
 
     public virtual void useDeathAbility(bool real){}
     public virtual void undoDeathAbility(bool real){}
+    public virtual void useCommittedDeathAblity(){}
 
     public virtual void useTurnChangeAbility(){}
+
+    public virtual void useAttackBeginAbility(piece target, bool real){}
+    public virtual void undoAttackBeginAbility(bool real){}
 
     public virtual void destroyAll()
     {
@@ -461,6 +469,54 @@ public class piece : MonoBehaviour
         target.unTakeDamage(amount, real);
     }
 
+    //returns amount of heal actually given, accounting for the other piece's max health
+    public int giveHeal(piece target, int amount, bool real)
+    {
+        int healGiven = 0;
+        if (real)
+        {
+            if (target.maxHealth - target.health >= amount)
+            {
+                healGiven = amount;
+                target.health += amount;
+            }
+            else
+            {
+                healGiven = target.maxHealth - target.health;
+                target.health = target.maxHealth;
+            }
+            target.thisHealthBar.setColors();
+        }
+        else
+        {
+            if (target.maxHealth - target.hypoHealth >= amount)
+            {
+                healGiven = amount;
+                target.hypoHealth += amount;
+            }
+            else
+            {
+                healGiven = target.maxHealth - target.hypoHealth;
+                target.hypoHealth = target.maxHealth;
+            }
+        }
+        return healGiven;
+    }
+
+    //different from undealing damage because it ignores any armor or other effects
+    public void unGetHeal(int amount, bool real)
+    {
+        if (real)
+        {
+            health -= amount;
+            thisHealthBar.setColors();
+        }
+        else
+        {
+            hypoHealth -= amount;
+        }
+    }
+
     public void takeDamage(int amount, bool real)
     {
         if (real)
@@ -518,7 +574,7 @@ public class piece : MonoBehaviour
         }
         else
         {
-            bool wastingAttackOnAlly = (target.hypoPiece != null && target.hypoPiece.team == team && attackHasNoEffect(target.hypoPiece, damage));
+            bool wastingAttackOnAlly = (target.hypoPiece != null && target.hypoPiece.team == team && attackHasNoEffect(target.hypoPiece, hypoDamage));
             return (target.hypoObstacle == 0 &&
                     hypoExhausted == false &&
                     !wastingAttackOnAlly);// && (target.hypoPiece == null || target.hypoPiece.team != team));
@@ -529,7 +585,14 @@ public class piece : MonoBehaviour
     public bool willGetCaptured(piece attacker, bool real)
     {
         return (( real && attacker.damage >= health) ||
-                (!real && attacker.damage >= hypoHealth));
+                (!real && attacker.hypoDamage >= hypoHealth));
+    }
+
+    //returns whether an attack will capture this piece
+    public bool willGetKilled(int incomingDamage, bool real)
+    {
+        return (( real && incomingDamage >= health) ||
+                (!real && incomingDamage >= hypoHealth));
     }
 
     //starts from this piece and looks in a direction for another piece, only looking along a straight line
@@ -601,32 +664,7 @@ public class piece : MonoBehaviour
         {
             return;
         }
-        if (real)
-        {
-            while (targets.Count > 0)
-            {
-                targets[0].targetedBy.Remove(this);
-                targets.RemoveAt(0);
-            }
-            while (hasActivatedAbility && abilityTargets.Count > 0)
-            {
-                abilityTargets[0].abilityTargetedBy.Remove(this);
-                abilityTargets.RemoveAt(0);
-            }
-        }
-        else
-        {
-            while (hypoTargets.Count > 0)
-            {
-                hypoTargets[0].hypoTargetedBy.Remove(this);
-                hypoTargets.RemoveAt(0);
-            }
-            while (hasActivatedAbility && hypoAbilityTargets.Count > 0)
-            {
-                hypoAbilityTargets[0].abilityHypoTargetedBy.Remove(this);
-                hypoAbilityTargets.RemoveAt(0);
-            }
-        }
+        clearTargets(real);
         if (realOrHypoTile(real) == null)
         {
             return;
@@ -871,7 +909,7 @@ public class piece : MonoBehaviour
         return bm != null && bm.selectedPiece == this && bm.playersTurn && team == 0 && alive && !exhausted && hasActivatedAbility;
     }
 
-    public void launchProjectile(piece target, int projectileDamage)
+    public projectile launchProjectile(piece target, int projectileDamage)
     {
         projectile launch;
         launch = Instantiate(gm.Projectile, gm.AWAY, Quaternion.identity).GetComponent<projectile>();
@@ -880,6 +918,7 @@ public class piece : MonoBehaviour
         launch.damage = projectileDamage;
         bm.movingPieces++;
         launch.init();
+        return launch;
     }
 
     public virtual bool attackHasNoEffect(piece target, float damageAmount)
@@ -1084,6 +1123,37 @@ public class piece : MonoBehaviour
         }
     }
 
+    //handles move and ability targets, real and hypo
+    public void clearTargets(bool real)
+    {
+        if (real)
+        {
+            while (targets.Count > 0)
+            {
+                targets[0].targetedBy.Remove(this);
+                targets.RemoveAt(0);
+            }
+            while (hasActivatedAbility && abilityTargets.Count > 0)
+            {
+                abilityTargets[0].abilityTargetedBy.Remove(this);
+                abilityTargets.RemoveAt(0);
+            }
+        }
+        else
+        {
+            while (hypoTargets.Count > 0)
+            {
+                hypoTargets[0].hypoTargetedBy.Remove(this);
+                hypoTargets.RemoveAt(0);
+            }
+            while (hasActivatedAbility && hypoAbilityTargets.Count > 0)
+            {
+                hypoAbilityTargets[0].abilityHypoTargetedBy.Remove(this);
+                hypoAbilityTargets.RemoveAt(0);
+            }
+        }
+    }
+
     public tile realOrHypoTile(bool real)
     {
         if (real)
@@ -1093,6 +1163,18 @@ public class piece : MonoBehaviour
         else
         {
             return hypoTile;
+        }
+    }
+
+    public int realOrHypoDamage(bool real)
+    {
+        if (real)
+        {
+            return damage;
+        }
+        else
+        {
+            return hypoDamage;
         }
     }
 }

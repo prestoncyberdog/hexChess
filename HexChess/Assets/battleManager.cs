@@ -57,7 +57,6 @@ public class battleManager : MonoBehaviour
     public void changeTurn(int whosTurn)
     {
         clearUndoStorage();
-        //em.findAllPieces(true);
         playersTurn = (whosTurn == 0);
         giveTurnBonuses(whosTurn);
         em.resetPieces();
@@ -70,7 +69,7 @@ public class battleManager : MonoBehaviour
         playsRemaining = 1;
         if (playersTurn)
         {
-            playerEnergy += 2;
+            playerEnergy += 20;
         }
         else if (!playersTurn)
         {
@@ -88,6 +87,8 @@ public class battleManager : MonoBehaviour
         for (int i = 0; i < alivePieces.Count; i++)
         {
             alivePieces[i].pushedPieces = null;
+            alivePieces[i].healedPieces = null;
+            alivePieces[i].damagedPieces = null;
         }
         while (recentlyCaptured.Count > 0)
         {
@@ -101,11 +102,13 @@ public class battleManager : MonoBehaviour
                 if (recentlyCaptured[0].team == 0 && !recentlyCaptured[0].ephemeral)
                 {
                     recentlyCaptured[0].cost = Mathf.Max(Mathf.Min(recentlyCaptured[0].cost * 2, 999), recentlyCaptured[0].cost + 1);
+                    recentlyCaptured[0].useCommittedDeathAblity();
                     recentlyCaptured[0].deleteInfo();
                     recentlyCaptured[0].moveToSlot(um.findOpenSlot());
                 }
                 else if (recentlyCaptured[0].team == 1 && recentlyCaptured[0].resummonableByEnemy)
                 {
+                    recentlyCaptured[0].useCommittedDeathAblity();
                     em.resummons.Add(recentlyCaptured[0]);
                 }
                 else// if (recentlyCaptured[0].team == 1 || recentlyCaptured[0].ephemeral)
@@ -184,7 +187,7 @@ public class battleManager : MonoBehaviour
         }
         if (lastMove.attacked != null)
         {
-            lastMove.movedPiece.unDealDamage(lastMove.attacked, lastMove.movedPiece.damage, real);
+            lastMove.movedPiece.unDealDamage(lastMove.attacked, lastMove.movedPiece.realOrHypoDamage(real), real);
         }
         
         if (real)
@@ -264,6 +267,18 @@ public class battleManager : MonoBehaviour
         }
     }
 
+    public void undoHeals(List<healedPiece> healedPieces, bool real)
+    {
+        if (healedPieces == null)
+        {
+            return;
+        }
+        for (int i = 0;i<healedPieces.Count;i++)
+        {
+            healedPieces[i].thisPiece.unGetHeal(healedPieces[i].healAmount, real);
+        }
+    }
+
     //reset distance measures for all tiles
     public void resetTiles()
     {
@@ -331,6 +346,18 @@ public class pushedPiece
     public tile startingTile;
     public piece thisPiece;
     public piece pushedInto;
+}
+
+public class healedPiece
+{
+    public piece thisPiece;
+    public int healAmount;
+
+    public healedPiece(piece target, int amount)
+    {
+        thisPiece = target;
+        healAmount = amount;
+    }
 }
 
 public class reversableMove

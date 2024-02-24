@@ -9,8 +9,8 @@ public class lineRook : piece
         pieceName = "Wolf";
         moveType = LINE;
         moveRange = 4;
-        cost = 4;
-        maxHealth = 4;
+        cost = 3;
+        maxHealth = 2;
         damage = 1;
         qualityBonus = 0;
 

@@ -63,7 +63,6 @@ public class stepArcher : piece
     {
         unDealDamage(shotAt, shootDamage, real);
         shotAt = null;
-        //don't have to do anything because we marked our target as attacked for undoMove
     }
     
     public override bool isValidAbilityTarget(tile target, bool real)

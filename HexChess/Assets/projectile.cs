@@ -10,6 +10,8 @@ public class projectile : MonoBehaviour
     public piece target;
     public int damage;
     public piece source;
+    public bool applyPush;
+    public int pushDirection;
 
     public float moveSpeed;
     public float targetAngle;
@@ -42,6 +44,21 @@ public class projectile : MonoBehaviour
 
     public void arrive()
     {
+        if (applyPush && !target.willGetKilled(damage, true))
+        {
+            tile targetTile = target.thisTile;
+            targetTile.pushTile(pushDirection, true);
+            if (targetTile.thisPushedPiece != null)
+            {
+                if (source.pushedPieces == null)
+                {
+                    source.pushedPieces = new List<pushedPiece>();
+                }
+                source.pushedPieces.Add(targetTile.thisPushedPiece);
+                targetTile.thisPushedPiece = null;
+                source.updateTargeting(true);
+            }
+        }
         target.takeDamage(damage, true);
         deleteProjectile();
     }

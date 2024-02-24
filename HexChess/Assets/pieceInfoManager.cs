@@ -53,7 +53,7 @@ public class pieceInfoManager : MonoBehaviour
         pieceNameText.alignment = TextAnchor.MiddleCenter;
         pieceNameText.color = new Color(0, 0, 0);
         pieceNameText.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, 100);
-        pieceNameText.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, 400);
+        pieceNameText.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, 800);
         pieceNameText.rectTransform.anchorMin = new Vector2(0, 0);
         pieceNameText.rectTransform.anchorMax = new Vector2(0, 0);
 
@@ -65,7 +65,7 @@ public class pieceInfoManager : MonoBehaviour
         damageText.alignment = TextAnchor.MiddleCenter;
         damageText.color = new Color(0, 0, 0);
         damageText.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, 100);
-        damageText.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, 400);
+        damageText.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, 800);
         damageText.rectTransform.anchorMin = new Vector2(0, 0);
         damageText.rectTransform.anchorMax = new Vector2(0, 0);
 
@@ -77,7 +77,7 @@ public class pieceInfoManager : MonoBehaviour
         healthText.alignment = TextAnchor.MiddleCenter;
         healthText.color = new Color(0, 0, 0);
         healthText.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, 100);
-        healthText.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, 400);
+        healthText.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, 800);
         healthText.rectTransform.anchorMin = new Vector2(0, 0);
         healthText.rectTransform.anchorMax = new Vector2(0, 0);
 
@@ -89,7 +89,7 @@ public class pieceInfoManager : MonoBehaviour
         costText.alignment = TextAnchor.MiddleCenter;
         costText.color = new Color(0, 0, 0);
         costText.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, 100);
-        costText.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, 400);
+        costText.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, 800);
         costText.rectTransform.anchorMin = new Vector2(0, 0);
         costText.rectTransform.anchorMax = new Vector2(0, 0);
 
@@ -101,7 +101,7 @@ public class pieceInfoManager : MonoBehaviour
         abilityText.alignment = TextAnchor.MiddleCenter;
         abilityText.color = new Color(0, 0, 0);
         abilityText.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, 100);
-        abilityText.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, 400);
+        abilityText.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, 800);
         abilityText.rectTransform.anchorMin = new Vector2(0, 0);
         abilityText.rectTransform.anchorMax = new Vector2(0, 0);
 

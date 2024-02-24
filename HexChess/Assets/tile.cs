@@ -87,6 +87,18 @@ public class tile : MonoBehaviour
             hypoTargetedBy.CopyTo(oldPieces);
         }
 
+        piece[] abilityOldPieces; 
+        if (real)
+        {
+            abilityOldPieces = new piece[abilityTargetedBy.Count];
+            abilityTargetedBy.CopyTo(abilityOldPieces);//copy list so it won't change while we are trying to loop through it
+        }
+        else
+        {
+            abilityOldPieces = new piece[abilityHypoTargetedBy.Count];
+            abilityHypoTargetedBy.CopyTo(abilityOldPieces);
+        }
+
         for (int i = 0;i<oldPieces.Length;i++)
         {
             if (oldPieces[i].moveType != piece.JUMP && oldPieces[i].moveRange > 1 && !retargeted.Contains(oldPieces[i]))//jump or single move targeting is unaffected
@@ -95,30 +107,18 @@ public class tile : MonoBehaviour
                 oldPieces[i].updateTargeting(real, ref retargeted);
             }
         }
-        updateAbilityTargeting(real, ref retargeted);
+        updateAbilityTargeting(real, abilityOldPieces, ref retargeted);
     }
 
     //updates targeting for each piece in abilityTargetedBy list
-    public void updateAbilityTargeting(bool real, ref List<piece> retargeted)
+    public void updateAbilityTargeting(bool real, piece[] abilityOldPieces, ref List<piece> retargeted)
     {
-        piece[] oldPieces; 
-        if (real)
+        for (int i = 0;i<abilityOldPieces.Length;i++)
         {
-            oldPieces = new piece[abilityTargetedBy.Count];
-            abilityTargetedBy.CopyTo(oldPieces);//copy list so it won't change while we are trying to loop through it
-        }
-        else
-        {
-            oldPieces = new piece[abilityHypoTargetedBy.Count];
-            abilityHypoTargetedBy.CopyTo(oldPieces);
-        }
-
-        for (int i = 0;i<oldPieces.Length;i++)
-        {
-            if (oldPieces[i].moveType != piece.JUMP && oldPieces[i].moveRange > 1 && !retargeted.Contains(oldPieces[i]))//jump or single move targeting is unaffected
+            if (!retargeted.Contains(abilityOldPieces[i]))
             {
-                //retargeted.Add(oldPieces[i]);
-                oldPieces[i].updateTargeting(real, ref retargeted);
+                //retargeted.Add(abilityOldPieces[i]);
+                abilityOldPieces[i].updateTargeting(real, ref retargeted);
             }
         }
     }

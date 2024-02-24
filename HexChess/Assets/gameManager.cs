@@ -46,7 +46,7 @@ public class gameManager : MonoBehaviour
         piece newPiece;
         for (int i = 0; i < 5; i++)
         {
-            newPiece = Instantiate(Pieces[Random.Range(0,Pieces.Length)], AWAY, Quaternion.identity).GetComponent<piece>();
+            newPiece = Instantiate(Pieces[Random.Range(13,20/*Pieces.Length*/)], AWAY, Quaternion.identity).GetComponent<piece>();
             newPiece.team = 0;
             newPiece.init();
             playerPieces.Add(newPiece);
@@ -62,7 +62,7 @@ public class gameManager : MonoBehaviour
 
     public int chooseRandomChampion()
     {
-        int[] options = new int[]{1,5,6,7,8,11,13};
+        int[] options = new int[]{19};//{1,5,6,7,8,11,13};
         return options[Random.Range(0,options.Length)];
     }
 
