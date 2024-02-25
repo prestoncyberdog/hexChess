@@ -67,14 +67,18 @@ public class piece : MonoBehaviour
     public List<tile> stepPath;
     public bool ephemeral;//for pieces summoned once only by player
     public bool resummonableByEnemy;
+    public bool canDisplaceOnAttack;
+    public bool swapping;
 
     public bool hasActivatedAbility;
     public bool activatingAbility;
     public bool usedActivatedAbility;
     public string abilityText;
     public float abilityFearScore;
+    public float attackFearScore;
     public int desiredRange;
     public buttonAbility activateButton;
+    public piece abilityTarget;
 
     public void init()
     {
@@ -159,6 +163,9 @@ public class piece : MonoBehaviour
     public virtual void useAttackBeginAbility(piece target, bool real){}
     public virtual void undoAttackBeginAbility(bool real){}
 
+    public virtual void postMoveAbilityTrigger(bool real){}
+    public virtual void undoPostMoveAbilityTrigger(bool real){}
+
     public virtual void destroyAll()
     {
         if (thisHealthBar != null)
@@ -222,15 +229,12 @@ public class piece : MonoBehaviour
                 //here, we will deal damage but not capture, so our resulting tile will not be the original target tile
                 attacking = targetTile.thisPiece;
                 targetTile = findEndingTile(attacking, real);
+                useAttackBeginAbility(attacking, real);
             }
             else if (pushedTile == null && targetTile.thisPiece != null && targetTile.thisPiece != this)
             {
                 capturing = targetTile.thisPiece;
             }
-            /*if (pushedTile == null)
-            {
-                exhausted = true;
-            }*/
             possibleOldTile = thisTile;
             oldTile = possibleOldTile;
             possibleOldTile.thisPiece = null;
@@ -239,26 +243,37 @@ public class piece : MonoBehaviour
             thisTile = targetTile;
             thisTile.thisPiece = this;
             thisTile.setColor();
+            if (pushedTile == null && !bm.undoing)
+            {
+                exhausted = true;
+                postMoveAbilityTrigger(real);
+            }
         }
         else //here its a move on the hypo board
         {
             if (hypoPushedTile == null && targetTile.hypoPiece != null && targetTile.hypoPiece != this && !targetTile.hypoPiece.willGetCaptured(this, real))
             {
                 //here, we will deal damage but not capture, so our resulting tile will not be the original target tile
+                piece attackedPiece = targetTile.hypoPiece;
                 targetTile = findEndingTile(targetTile.hypoPiece, real);
+                useAttackBeginAbility(attackedPiece, real);
                 //enemy manager should handle the hypothetical damage and capturing
             }
             possibleOldTile = hypoTile;
             possibleOldTile.hypoPiece = null;
             hypoTile = targetTile;
             hypoTile.hypoPiece = this;
-            if ((hypoPushedTile == null) && (hypoTile != possibleOldTile) && (hypoExhausted == false))//should not happen when pushed or undoing a move
+            if ((hypoPushedTile == null) && (hypoTile != possibleOldTile) && (hypoExhausted == false) && !bm.undoing)//should not happen when pushed or undoing a move
             {
                 useMoveAbility(false);
             }
             if (hypoPushedTile == null)
             {
                 hypoExhausted = true;
+            }
+            if (hypoPushedTile == null && !bm.undoing)
+            {
+                postMoveAbilityTrigger(real);
             }
         }
         if (champion)
@@ -274,16 +289,16 @@ public class piece : MonoBehaviour
     //allows us to delay coloring changes, captures, and sound effects, our final location is already changed in moveToTile
     public IEnumerator moveTowardsNewTile()
     {
-        bool temp = exhausted;
-        exhausted = true;
+        //bool temp = exhausted;
+        //exhausted = true;
         bm.resetHighlighting();
-        exhausted = temp;
+        //exhausted = temp;
         float moveRateThisMovement = gm.moveRate;
         if (pushedTile != null)
         {
             moveRateThisMovement = gm.pushMoveRate;
         }
-        else if (team == 0)
+        else if (team == 0 && !swapping)
         {
             moveRateThisMovement = gm.moveRate * 2;
         }
@@ -298,14 +313,14 @@ public class piece : MonoBehaviour
         {
             stepPath.Add(pushedTile);
         }
-        if (moveType == JUMP || moveType == LINE)
+        if (true)//moveType == JUMP || moveType == LINE)
         {
             stepPath.Add(newTile);
         }
-        else
+        /*else
         {
             findStepPath(newTile);
-        }
+        }*/
         while (stepPath.Count > 0)
         {
             Vector3 toNextTile = stepPath[0].transform.position - transform.position;
@@ -344,9 +359,8 @@ public class piece : MonoBehaviour
         transform.position = newTile.transform.position;
         setColor();
 
-        if (pushedTile == null && exhausted == false && !bm.undoing)//make sure its a real forward move by us
+        if (pushedTile == null && !bm.undoing)//make sure its a real forward move by us
         {
-            exhausted = true;
             if (newTile != oldTile)//make sure to not use ability on move undo, when pushed, or when stationary
             {
                 useMoveAbility(true);
@@ -368,6 +382,7 @@ public class piece : MonoBehaviour
         oldTile = null;
         pushedTile = null;
         attacking = null;
+        swapping = false;
         bm.resetHighlighting();
         thisHealthBar.setPositions();
     }
@@ -375,7 +390,7 @@ public class piece : MonoBehaviour
     //finds the tile we'd end up on if we attacked target
     public tile findEndingTile(piece target, bool real)
     {
-        if (target.willGetCaptured(this, real))
+        if (target.willGetCaptured(this, real) || canDisplaceOnAttack)
         {
             if (real)
             {
@@ -446,6 +461,29 @@ public class piece : MonoBehaviour
                 collideWithPiece(otherPiece, real);
             }
             storePushedPieceInfo(currTile, otherPiece);
+            hypoPushedTile = null;
+        }
+    }
+
+    public void pushToTile(tile destination, bool real) //an alternative to directional pushing which overrides rooted movement and can send them anywhere
+    {
+        tile currTile = realOrHypoTile(real);    
+        if (real)
+        {
+            pushedTile = destination; //assume destination is empty
+            oldTile = thisTile;
+            newTile = pushedTile;
+            moveToTile(pushedTile, real);   
+            StartCoroutine(this.moveTowardsNewTile());
+
+            storePushedPieceInfo(currTile, null);
+        }
+        else
+        {
+            hypoPushedTile = destination;//needed for moveToTile
+            moveToTile(hypoPushedTile, real);
+
+            storePushedPieceInfo(currTile, null);
             hypoPushedTile = null;
         }
     }

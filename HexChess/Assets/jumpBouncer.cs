@@ -14,6 +14,7 @@ public class jumpBouncer : piece
         damage = 2;
         qualityBonus = 0;
 
+        abilityText = "Can move again after a kill";
         transform.localScale = new Vector3(.5f, .5f, 1);
     }
 

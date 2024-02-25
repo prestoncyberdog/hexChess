@@ -15,7 +15,7 @@ public class piecePushTree : piece
         qualityBonus = 0;
 
         hasActivatedAbility = true;
-        abilityText = "Pushes target";
+        abilityText = "Pushes an adjacent piece";
         abilityFearScore = 1;//roughly describes damage of the ability in general
 
         transform.localScale = new Vector3(.5f, .5f, 1);

@@ -16,7 +16,7 @@ public class pieceHealMove : piece
         qualityBonus = 0;
 
         healAmount = 1;
-        abilityText = "Heal amount: " + healAmount;
+        abilityText = "Heals adjacent allies by " + healAmount + " after moving";
         transform.localScale = new Vector3(.5f, .5f, 1);
     }
 

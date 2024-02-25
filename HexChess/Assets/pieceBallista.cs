@@ -4,7 +4,6 @@ using UnityEngine;
 
 public class pieceBallista : piece
 {
-    public piece shotAt;
     public projectile launched;
 
     public int shootRange;
@@ -40,7 +39,7 @@ public class pieceBallista : piece
     {
         pushedPieces = new List<pushedPiece>();
         activatingAbility = false;
-        shotAt = target.realOrHypoPiece(real);
+        abilityTarget = target.realOrHypoPiece(real);
         attacking = null;
         capturing = null;
 
@@ -48,7 +47,7 @@ public class pieceBallista : piece
         int direction = -1;
         for (int i = 0; i < 6; i++)
         {
-            if (isInDirection(shotAt, i, real))
+            if (isInDirection(abilityTarget, i, real))
             {
                 direction = i;
                 break;
@@ -60,14 +59,14 @@ public class pieceBallista : piece
             reversableMove thisMove = new reversableMove(this, thisTile, null, null);
             bm.undoStack.Insert(0, thisMove);
             exhausted = true;
-            launched = launchProjectile(shotAt, shootDamage);
+            launched = launchProjectile(abilityTarget, shootDamage);
             launched.applyPush = true;
             launched.pushDirection = direction;
         }
         else
         {
             //apply push now since we dont fire a projectile
-            if (!shotAt.willGetKilled(shootDamage, real))
+            if (!abilityTarget.willGetKilled(shootDamage, real))
             {
                 target.pushTile(direction, real);
                 if (target.thisPushedPiece != null)
@@ -76,7 +75,7 @@ public class pieceBallista : piece
                     target.thisPushedPiece = null;
                 }
             }
-            dealDamage(shotAt, shootDamage, real);
+            dealDamage(abilityTarget, shootDamage, real);
             hypoExhausted = true;
         }
         if (pushedPieces.Count == 0)
@@ -89,8 +88,8 @@ public class pieceBallista : piece
     {
         bm.undoPushes(pushedPieces, real);
         pushedPieces = null;
-        unDealDamage(shotAt, shootDamage, real);
-        shotAt = null;
+        unDealDamage(abilityTarget, shootDamage, real);
+        abilityTarget = null;
     }
     
     public override bool isValidAbilityTarget(tile target, bool real)

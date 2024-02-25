@@ -4,8 +4,6 @@ using UnityEngine;
 
 public class stepArcher : piece
 {
-    public piece shotAt;
-
     public int shootRange;
     public int shootDamage;
 
@@ -38,7 +36,7 @@ public class stepArcher : piece
     public override void useActivatedAbility(tile target, bool real)
     {
         activatingAbility = false;
-        shotAt = target.realOrHypoPiece(real);
+        abilityTarget = target.realOrHypoPiece(real);
         attacking = null;
         capturing = null;
         if (real)
@@ -46,13 +44,13 @@ public class stepArcher : piece
             reversableMove thisMove = new reversableMove(this, thisTile, null, null);
             bm.undoStack.Insert(0, thisMove);
             exhausted = true;
-            launchProjectile(shotAt, shootDamage);
+            launchProjectile(abilityTarget, shootDamage);
         }
         else
         {
-            dealDamage(shotAt, shootDamage, real);
+            dealDamage(abilityTarget, shootDamage, real);
             hypoExhausted = true;
-            if (attackHasNoEffect(shotAt, shootDamage) && shotAt.team == team)
+            if (attackHasNoEffect(abilityTarget, shootDamage) && abilityTarget.team == team)
             {
                 wastingAttackOnAlly = true;
             }
@@ -61,8 +59,8 @@ public class stepArcher : piece
 
     public override void undoActivatedAbility(bool real)
     {
-        unDealDamage(shotAt, shootDamage, real);
-        shotAt = null;
+        unDealDamage(abilityTarget, shootDamage, real);
+        abilityTarget = null;
     }
     
     public override bool isValidAbilityTarget(tile target, bool real)

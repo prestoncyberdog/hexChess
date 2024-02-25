@@ -18,6 +18,7 @@ public class pieceDamageScaler : piece
         damage = 1;
         qualityBonus = -2;
 
+        abilityText = "Gains damage after a kill";
         valueGain = 1.5f;
         baseDamage = damage;
         baseValue = -1;

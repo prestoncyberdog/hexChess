@@ -14,6 +14,8 @@ public class lineBishop : piece
         damage = 1;
         qualityBonus = 0;
 
+        abilityText = "Pushes target";
+        attackFearScore = 1;
         transform.localScale = new Vector3(2.4f, 2.4f, 1);
     }
 

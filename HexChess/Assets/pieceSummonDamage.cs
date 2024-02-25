@@ -17,6 +17,7 @@ public class pieceSummonDamage : piece
         qualityBonus = -1;
 
         summonDamage = 1;
+        abilityText = "Deals " + summonDamage + " damage when summoned";
         transform.localScale = new Vector3(.5f, .5f, 1);
     }
 

@@ -14,7 +14,11 @@ public class pieceSwapper : piece
         damage = 0;
         qualityBonus = 0;
 
-        transform.localScale = new Vector3(2.4f, 2.4f, 1);
+        canDisplaceOnAttack = true;
+        abilityText = "Swaps places with another piece";
+        attackFearScore = 2;//roughly describes damage of the ability in general
+
+        transform.localScale = new Vector3(.5f, .5f, 1);
     }
 
     public override void specificUpdate()
@@ -22,35 +26,44 @@ public class pieceSwapper : piece
 
     }
 
-    //push target piece when attacking
-    public override void useAttackAbility(piece target, bool real)
+    //push target piece to our starting tile
+    public override void useAttackBeginAbility(piece target, bool real)
     {
+        abilityTarget = target;
         pushedPieces = new List<pushedPiece>();
-        tile targetTile;
-        for (int i = 0; i < 6; i++)
+        tile targetTile = abilityTarget.realOrHypoTile(real);
+        abilityTarget.pushToTile(realOrHypoTile(real), real);
+        pushedPieces.Add(targetTile.thisPushedPiece);
+        targetTile.thisPushedPiece = null;
+        swapping = real;
+    }
+
+    //reconnect target piece with its new tile
+    public override void postMoveAbilityTrigger(bool real)
+    {
+        if (abilityTarget != null)
         {
-            if (isInDirection(target, i, real))
-            {
-                targetTile=target.realOrHypoTile(real);
-                targetTile.pushTile(i, real);
-                if (targetTile.thisPushedPiece != null)
-                {
-                    pushedPieces.Add(targetTile.thisPushedPiece);
-                    targetTile.thisPushedPiece = null;
-                }
-                return;
-            }
-        }
-        if (pushedPieces.Count == 0)
-        {
-            pushedPieces = null;
+            abilityTarget.realOrHypoTile(real).setRealOrHypoPiece(abilityTarget, real);
+            abilityTarget.updateTargeting(real);
         }
     }
 
-    public override void undoAttackAbility(bool real)
+    //this happens first in undo move, so send target piece home here
+    public override void undoPostMoveAbilityTrigger(bool real)
     {
         bm.undoPushes(pushedPieces, real);
         pushedPieces = null;
+    }
+
+    //this is clean up, reconnecting target piece to its tile
+    public override void undoAttackBeginAbility(bool real)
+    {
+        if (abilityTarget != null)
+        {
+            abilityTarget.realOrHypoTile(real).setRealOrHypoPiece(abilityTarget, real);
+            abilityTarget.updateTargeting(real);
+            abilityTarget = null;
+        }
     }
 
     public override bool attackHasNoEffect(piece target, float damageAmount)

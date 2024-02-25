@@ -14,6 +14,7 @@ public class stepSummonPush : piece
         damage = 1;
         qualityBonus = -1;
 
+        abilityText = "Pushes adjacent pieces when summoned";
         transform.localScale = new Vector3(.5f, .5f, 1);
     }
 

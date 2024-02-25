@@ -250,4 +250,16 @@ public class tile : MonoBehaviour
             return hypoPiece;
         }
     }
+
+    public void setRealOrHypoPiece(piece newPiece, bool real)
+    {
+        if (real)
+        {
+            thisPiece = newPiece;
+        }
+        else
+        {
+            hypoPiece = newPiece;
+        }
+    }
 }

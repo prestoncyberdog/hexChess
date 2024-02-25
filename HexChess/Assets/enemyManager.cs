@@ -173,13 +173,13 @@ public class enemyManager : MonoBehaviour
 
                     if (canRetaliate)
                     {
-                        enemyPieces[i].pieceTargetingPenalty += (enemyPieces[i].expectedDamage(otherPiece.hypoDamage) * 1f / enemyPieces[i].maxHealth) * .5f * enemyPieces[i].value * pieceWeight * retaliationModifier;
+                        enemyPieces[i].pieceTargetingPenalty += (enemyPieces[i].expectedDamage(otherPiece.hypoDamage + otherPiece.attackFearScore) * 1f / enemyPieces[i].maxHealth) * .5f * enemyPieces[i].value * pieceWeight * retaliationModifier;
                     }
                     else
                     {
-                        enemyPieces[i].pieceTargetingPenalty += (enemyPieces[i].expectedDamage(otherPiece.hypoDamage) * 1f / enemyPieces[i].maxHealth) * .5f * enemyPieces[i].value * pieceWeight;
+                        enemyPieces[i].pieceTargetingPenalty += (enemyPieces[i].expectedDamage(otherPiece.hypoDamage + otherPiece.attackFearScore) * 1f / enemyPieces[i].maxHealth) * .5f * enemyPieces[i].value * pieceWeight;
                     }
-                    enemyPieces[i].potentialIncomingDamage += enemyPieces[i].expectedDamage(otherPiece.hypoDamage);
+                    enemyPieces[i].potentialIncomingDamage += enemyPieces[i].expectedDamage(otherPiece.hypoDamage + otherPiece.attackFearScore);
                 }
             }
             //check if total is enough to capture
@@ -510,6 +510,10 @@ public class enemyManager : MonoBehaviour
                     {
                         //if we've stalled too long, reduce group size for the rest of the turn
                         turnGroupSize--;
+                        if (turnGroupSize == 1)
+                        {
+                            Debug.LogError("AI group size reduced to 1");
+                        }
                         currentTurnStallTime = 0;
                     }
                 }
@@ -763,7 +767,7 @@ public class enemyManager : MonoBehaviour
     {
         for (int i = spawnPlan.Count; i < 10; i++)
         {
-            piece newPiece = Instantiate(gm.Pieces[Random.Range(19,20/*Pieces.Length*/)], new Vector3(1000, 1000, 0), Quaternion.identity).GetComponent<piece>();
+            piece newPiece = Instantiate(gm.Pieces[Random.Range(0,gm.Pieces.Length)], new Vector3(1000, 1000, 0), Quaternion.identity).GetComponent<piece>();
             newPiece.team = 1;
             newPiece.init();
             spawnPlan.Add(newPiece);

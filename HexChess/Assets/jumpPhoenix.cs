@@ -15,7 +15,7 @@ public class jumpPhoenix : piece
         qualityBonus = -5;
 
         resummonableByEnemy = true;
-
+        abilityText = "Costs 0 energy to resummon";
         transform.localScale = new Vector3(.5f, .5f, 1);
     }
 

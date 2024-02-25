@@ -69,7 +69,7 @@ public class battleManager : MonoBehaviour
         playsRemaining = 1;
         if (playersTurn)
         {
-            playerEnergy += 20;
+            playerEnergy += 2;
         }
         else if (!playersTurn)
         {
@@ -89,6 +89,7 @@ public class battleManager : MonoBehaviour
             alivePieces[i].pushedPieces = null;
             alivePieces[i].healedPieces = null;
             alivePieces[i].damagedPieces = null;
+            alivePieces[i].abilityTarget = null;
         }
         while (recentlyCaptured.Count > 0)
         {
@@ -178,6 +179,7 @@ public class battleManager : MonoBehaviour
         }
 
         tile moveEndTile = lastMove.movedPiece.realOrHypoTile(real);//refers to the end of the move we are undoing
+        lastMove.movedPiece.undoPostMoveAbilityTrigger(real);
         lastMove.movedPiece.undoMoveAbility(real);
         lastMove.movedPiece.moveToTile(lastMove.startingTile, real);
         if (lastMove.captured != null)
@@ -188,6 +190,7 @@ public class battleManager : MonoBehaviour
         if (lastMove.attacked != null)
         {
             lastMove.movedPiece.unDealDamage(lastMove.attacked, lastMove.movedPiece.realOrHypoDamage(real), real);
+            lastMove.movedPiece.undoAttackBeginAbility(real);
         }
         
         if (real)
