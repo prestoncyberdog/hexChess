@@ -41,12 +41,19 @@ public class uiManager : MonoBehaviour
     {
         if (Input.GetMouseButtonDown(0))//use left click to select and place pieces
         {
-            if(bm.selectedPiece != null && !bm.selectedPiece.alive && bm.playersTurn && currTile.isValidPlacement(0, true) && bm.selectedPiece.canAfford() && bm.movingPieces == 0)//placing piece
+            if (bm.selectedPiece != null && bm.selectedPiece.alive && !bm.selectedPiece.exhausted && bm.selectedPiece.hasActivatedAbility && bm.selectedPiece.activatingAbility && 
+                bm.selectedPiece.team == 0 && bm.playersTurn  && bm.movingPieces == 0 && bm.selectedPiece.abilityTargets.Contains(currTile) && bm.selectedPiece.isValidAbilityTarget(currTile, true))//activating special ability
+            {
+                bm.selectedPiece.useActivatedAbility(currTile, true);
+                bm.selectedPiece.usedActivatedAbility = true;
+                bm.resetHighlighting();
+            }
+            else if(bm.selectedPiece != null && !bm.selectedPiece.alive && bm.playersTurn && currTile.isValidPlacement(0, true) && bm.selectedPiece.canAfford() && bm.movingPieces == 0)//placing piece
             {
                 bm.placeNewPiece(bm.selectedPiece, currTile);
                 bm.selectedPiece.payEnergyCost();
             }
-            if (currTile.thisPiece != null)//selecting piece
+            else if (currTile.thisPiece != null)//selecting piece
             {
                 bm.selectedPiece = currTile.thisPiece;
                 bm.justClicked = true;
@@ -77,7 +84,7 @@ public class uiManager : MonoBehaviour
                 //bm.resetTiles();
                 //bm.resetHighlighting();
             }
-            if(bm.selectedPiece != null && !bm.selectedPiece.alive && bm.playersTurn && currTile.isValidPlacement(0, true) && bm.selectedPiece.canAfford() && bm.movingPieces == 0)//placing piece
+            else if(bm.selectedPiece != null && !bm.selectedPiece.alive && bm.playersTurn && currTile.isValidPlacement(0, true) && bm.selectedPiece.canAfford() && bm.movingPieces == 0)//placing piece
             {
                 bm.placeNewPiece(bm.selectedPiece, currTile);
                 bm.selectedPiece.payEnergyCost();

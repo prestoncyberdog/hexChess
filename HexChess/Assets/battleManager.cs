@@ -261,10 +261,14 @@ public class battleManager : MonoBehaviour
                         pushedPieces[i].thisPiece.hypoPushedTile = null;
                     }
                 }
-                if (pushedPieces[i].pushedInto != null)//undo collision damage
+                if (pushedPieces[i].pushedIntoPiece != null)//undo collision damage
                 {
                     pushedPieces[i].thisPiece.unTakeDamage(gm.pushDamage, real);
-                    pushedPieces[i].pushedInto.unTakeDamage(gm.pushDamage, real);
+                    pushedPieces[i].pushedIntoPiece.unTakeDamage(gm.pushDamage, real);
+                }
+                if (pushedPieces[i].pushedIntoObstacle != null)//undo collision with obstacle
+                {
+                    pushedPieces[i].thisPiece.unTakeDamage(gm.pushDamage, real);
                 }
             }
         }
@@ -348,7 +352,8 @@ public class pushedPiece
 {
     public tile startingTile;
     public piece thisPiece;
-    public piece pushedInto;
+    public piece pushedIntoPiece;
+    public obstacle pushedIntoObstacle;
 }
 
 public class healedPiece

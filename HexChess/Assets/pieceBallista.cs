@@ -128,8 +128,7 @@ public class pieceBallista : piece
                     otherTile = activeTile.neighbors[i];
                     if (activeTile.distance < shootRange &&
                         otherTile.distance > activeTile.distance + 1 &&
-                            ((real && (activeTile == thisTile || activeTile.thisPiece == null)) ||
-                            (!real && (activeTile == hypoTile || activeTile.hypoPiece == null))))
+                        (activeTile == realOrHypoTile(real) || activeTile.isOpen(real)))
                     {
                         continueSearch = true;
                         otherTile.distance = activeTile.distance + 1;
@@ -153,10 +152,5 @@ public class pieceBallista : piece
             }
             continueSearch = true;
         }
-    }
-
-    public override bool attackHasNoEffect(piece target, float damageAmount)
-    {
-        return false;
     }
 }

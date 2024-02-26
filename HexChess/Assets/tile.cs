@@ -22,11 +22,11 @@ public class tile : MonoBehaviour
     public List<piece> targetedBy;//stores all pieces targeting tile
     public List<piece> abilityTargetedBy;
     public piece thisPiece;
-    public int obstacle;//may be object instead later
+    public obstacle thisObstacle;
     public List<piece> hypoTargetedBy;
     public List<piece> abilityHypoTargetedBy;
     public piece hypoPiece;
-    public int hypoObstacle;
+    public obstacle hypoObstacle;
     public pushedPiece thisPushedPiece;
 
     public int[] championDists;
@@ -57,7 +57,7 @@ public class tile : MonoBehaviour
         hypoTargetedBy = new List<piece>();
         abilityHypoTargetedBy = new List<piece>();
 
-        obstacle = 0;//for now
+        thisObstacle = null;
 
         findNeighbors();
     }
@@ -123,13 +123,24 @@ public class tile : MonoBehaviour
         }
     }
 
-    public bool isValidPlacement(int team, bool real)//returns whether placing a piece here is possible right now
+    public bool isValidPlacement(int team, bool real)//returns whether placing a piece here is possible right now for the given team
     {
         if (real)
         {
-            return (obstacle == 0 && thisPiece == null && bm.playsRemaining > 0 && neighborsChampion(team, real));
+            return (thisObstacle == null && thisPiece == null && bm.playsRemaining > 0 && neighborsChampion(team, real));
         }
-        return (hypoObstacle == 0 && hypoPiece == null && bm.playsRemaining > 0 && neighborsChampion(team, real));
+        return (hypoObstacle == null && hypoPiece == null && bm.playsRemaining > 0 && neighborsChampion(team, real));
+    }
+
+    public bool isOpen(bool real)//returns whether tile is open for moving through or placing
+    {
+        if (real)
+        {
+            return (thisObstacle == null && 
+                    (thisPiece == null || thisPiece.alive == false));
+        }
+        return (hypoObstacle == null && 
+                (hypoPiece == null || hypoPiece.hypoAlive == false));
     }
 
     public bool neighborsChampion(int team, bool real)//returns whether the tile neighbors the proper champion
@@ -260,6 +271,18 @@ public class tile : MonoBehaviour
         else
         {
             hypoPiece = newPiece;
+        }
+    }
+
+    public obstacle realOrHypoObstacle(bool real)
+    {
+        if (real)
+        {
+            return thisObstacle;
+        }
+        else
+        {
+            return hypoObstacle;
         }
     }
 }

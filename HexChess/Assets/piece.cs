@@ -333,7 +333,7 @@ public class piece : MonoBehaviour
                 }
                 if (pushedTile != null && pushedTile != newTile && stepPath[0] == pushedTile)
                 {
-                    collideWithPiece(pushedTile.thisPiece, true);
+                    collideWithTile(pushedTile, true);
                     if (!alive)
                     {
                         bm.movingPieces--;
@@ -424,7 +424,6 @@ public class piece : MonoBehaviour
             return;
         }
         tile currTile = realOrHypoTile(real);
-        piece otherPiece = null;
         if (currTile.neighbors[direction] == null)
         {
             return;
@@ -434,7 +433,8 @@ public class piece : MonoBehaviour
         {
             pushedTile = currTile.neighbors[direction];
             oldTile = thisTile;
-            if (pushedTile.thisPiece == null && pushedTile.obstacle == 0)
+            storePushedPieceInfo(currTile, pushedTile, real);
+            if (pushedTile.isOpen(real))
             {
                 newTile = pushedTile;
                 moveToTile(pushedTile, real);
@@ -442,25 +442,21 @@ public class piece : MonoBehaviour
             else // here we've bumped into pushedTile
             {
                 newTile = thisTile;
-                otherPiece = pushedTile.thisPiece;
             }
             StartCoroutine(this.moveTowardsNewTile());
-
-            storePushedPieceInfo(currTile, otherPiece);
         }
         else
         {
             hypoPushedTile = currTile.neighbors[direction];//needed for moveToTile
-            otherPiece = hypoPushedTile.hypoPiece;
-            if ((otherPiece == null || (otherPiece.hypoAlive == false)) && hypoPushedTile.hypoObstacle == 0)
+            storePushedPieceInfo(currTile, hypoPushedTile, real);
+            if (hypoPushedTile.isOpen(real))
             {
                 moveToTile(hypoPushedTile, real);
             }
-            else if (otherPiece != null)
+            else 
             {
-                collideWithPiece(otherPiece, real);
+                collideWithTile(hypoPushedTile, real);
             }
-            storePushedPieceInfo(currTile, otherPiece);
             hypoPushedTile = null;
         }
     }
@@ -476,15 +472,27 @@ public class piece : MonoBehaviour
             moveToTile(pushedTile, real);   
             StartCoroutine(this.moveTowardsNewTile());
 
-            storePushedPieceInfo(currTile, null);
+            storePushedPieceInfo(currTile, null, real);
         }
         else
         {
             hypoPushedTile = destination;//needed for moveToTile
             moveToTile(hypoPushedTile, real);
 
-            storePushedPieceInfo(currTile, null);
+            storePushedPieceInfo(currTile, null, real);
             hypoPushedTile = null;
+        }
+    }
+
+    public void collideWithTile(tile other, bool real)
+    {
+        if (other.realOrHypoPiece(real) != null)
+        {
+            collideWithPiece(other.realOrHypoPiece(real), real);
+        }
+        else if (other.realOrHypoObstacle(real) != null)
+        {
+            collideWithObstacle(other.realOrHypoObstacle(real), real);
         }
     }
 
@@ -492,6 +500,11 @@ public class piece : MonoBehaviour
     {
         takeDamage(gm.pushDamage, real);
         other.takeDamage(gm.pushDamage, real);
+    }
+
+    public void collideWithObstacle(obstacle other, bool real)
+    {
+        takeDamage(gm.pushDamage, real);
     }
 
     public void dealDamage(piece target, int amount, bool real)
@@ -607,13 +620,13 @@ public class piece : MonoBehaviour
     {
         if (real)
         {
-            return (target.obstacle == 0 &&
+            return (target.thisObstacle == null &&
                     exhausted == false);
         }
         else
         {
             bool wastingAttackOnAlly = (target.hypoPiece != null && target.hypoPiece.team == team && attackHasNoEffect(target.hypoPiece, hypoDamage));
-            return (target.hypoObstacle == 0 &&
+            return (target.hypoObstacle == null &&
                     hypoExhausted == false &&
                     !wastingAttackOnAlly);// && (target.hypoPiece == null || target.hypoPiece.team != team));
         }
@@ -653,12 +666,17 @@ public class piece : MonoBehaviour
         return ((team == 0 && bm.playerEnergy >= cost) || (team == 1 && bm.enemyEnergy >= cost));
     }
 
-    public void storePushedPieceInfo(tile formerTile, piece otherPiece)
+    //stores both piece and obstacle from the destination tile
+    public void storePushedPieceInfo(tile formerTile, tile destTile, bool real)
     {
         pushedPiece storage = new pushedPiece();
         storage.thisPiece = this;
         storage.startingTile = formerTile;
-        storage.pushedInto = otherPiece;
+        if (destTile != null)
+        {
+            storage.pushedIntoPiece = destTile.realOrHypoPiece(real);
+            storage.pushedIntoObstacle = destTile.realOrHypoObstacle(real);
+        }
         formerTile.thisPushedPiece = storage;
     }
 
@@ -1091,8 +1109,7 @@ public class piece : MonoBehaviour
                     otherTile = activeTile.neighbors[i];
                     if (activeTile.distance < moveRange &&
                         otherTile.distance > activeTile.distance + 1 &&
-                            ((real && (activeTile == thisTile || activeTile.thisPiece == null)) ||
-                            (!real && (activeTile == hypoTile || activeTile.hypoPiece == null))))
+                        (activeTile == realOrHypoTile(real) || activeTile.isOpen(real)))
                     {
                         continueSearch = true;
                         otherTile.distance = activeTile.distance + 1;

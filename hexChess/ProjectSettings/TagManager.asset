@@ -50,7 +50,7 @@ TagManager:
   - name: tile decoration
     uniqueID: 2004642803
     locked: 0
-  - name: objective
+  - name: obstacle
     uniqueID: 814321535
     locked: 0
   - name: piece

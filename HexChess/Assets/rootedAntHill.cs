@@ -10,11 +10,11 @@ public class rootedAntHill : piece
 
     public override void specificInit()
     {
-        pieceName = "Ant Hill";
-        moveType = ROOTED;
-        moveRange = 0;
+        pieceName = "Ant Queen";
+        moveType = STEP;
+        moveRange = 1;
         cost = 6;
-        maxHealth = 6;
+        maxHealth = 5;
         damage = 0;
         qualityBonus = 0;
 
@@ -90,7 +90,7 @@ public class rootedAntHill : piece
     
     public override bool isValidAbilityTarget(tile target, bool real)
     {
-        if (target.realOrHypoPiece(real) == null && target.obstacle == 0)//only empty tiles
+        if (target.isOpen(real))//only empty tiles
         {
             return true;
         }

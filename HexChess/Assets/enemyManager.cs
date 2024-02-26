@@ -579,7 +579,7 @@ public class enemyManager : MonoBehaviour
         for (int i = 0; i < bm.allTiles.Length; i++)
         {
             bm.allTiles[i].hypoPiece = bm.allTiles[i].thisPiece;
-            bm.allTiles[i].hypoObstacle = bm.allTiles[i].obstacle;
+            bm.allTiles[i].hypoObstacle = bm.allTiles[i].thisObstacle;
             //copy targeted by
             bm.allTiles[i].hypoTargetedBy = new List<piece>();
             bm.allTiles[i].abilityHypoTargetedBy = new List<piece>();
@@ -605,7 +605,7 @@ public class enemyManager : MonoBehaviour
         for (int i = 0; i < bm.allTiles.Length; i++)
         {
             if (!(bm.allTiles[i].hypoPiece == bm.allTiles[i].thisPiece &&
-                  bm.allTiles[i].hypoObstacle == bm.allTiles[i].obstacle))
+                  bm.allTiles[i].hypoObstacle == bm.allTiles[i].thisObstacle))
             {
                 Debug.LogError("Hypo tile " + i + "  does not match real tile");
             }

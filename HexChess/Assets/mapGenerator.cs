@@ -23,6 +23,7 @@ public class mapGenerator : MonoBehaviour
         mapRadius = 3;
         setTileScale();
         spawnMap();//spawns tiles, not obstacles
+        placeRandomObstacles(.2f);
         placeChampions();
     }
 
@@ -46,7 +47,7 @@ public class mapGenerator : MonoBehaviour
             for (int i = 0; i < 2; i++)
             {
                 tile place = bm.allTiles[Random.Range(0, bm.allTiles.Length)];
-                if (place.thisPiece == null)
+                if (place.isOpen(true))
                 {
                     gm.champions[i].thisTile = place;
                 }
@@ -216,6 +217,21 @@ public class mapGenerator : MonoBehaviour
         for (int i = 0; i < tileGameObjects.Length; i++)
         {
             bm.allTiles[i] = tileGameObjects[i].GetComponent<tile>();
+        }
+    }
+
+    //gives each tile an equal chance of having an obstacle
+    public void placeRandomObstacles(float chance)
+    {
+        obstacle newObstacle;
+        for (int i = 0; i < bm.allTiles.Length; i++)
+        {
+            if ((Random.Range(0, 10000) / 10000f) < chance)
+            {
+                newObstacle = Instantiate(gm.Obstacles[0], bm.allTiles[i].transform.position, Quaternion.identity).GetComponent<obstacle>();
+                newObstacle.thisTile = bm.allTiles[i];
+                bm.allTiles[i].thisObstacle = newObstacle;
+            }
         }
     }
 }
