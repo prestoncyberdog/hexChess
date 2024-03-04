@@ -10,7 +10,7 @@ public class rootedAntHill : piece
 
     public override void specificInit()
     {
-        pieceName = "Ant Queen";
+        pieceName = "Goliant Queen";
         moveType = STEP;
         moveRange = 1;
         cost = 6;
@@ -24,7 +24,7 @@ public class rootedAntHill : piece
         abilityFearScore = 0;//roughly describes damage of the ability in general
         prepareSummon();
 
-        transform.localScale = new Vector3(.5f, .5f, 1);
+        transform.localScale = new Vector3(.6f, .6f, 1);
     }
 
     public override void specificUpdate()

@@ -22,6 +22,7 @@ public class jumpPhoenix : piece
     public override void useCommittedDeathAblity()
     {
         cost = 0;
+        health = maxHealth;
     }
 
     public override void specificUpdate()

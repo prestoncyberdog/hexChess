@@ -23,7 +23,7 @@ public class mapGenerator : MonoBehaviour
         mapRadius = 3;
         setTileScale();
         spawnMap();//spawns tiles, not obstacles
-        placeRandomObstacles(.2f);
+        placeRandomObstacles(.15f);
         placeChampions();
     }
 

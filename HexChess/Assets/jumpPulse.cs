@@ -15,7 +15,7 @@ public class jumpPulse : piece
         qualityBonus = 1;
 
         abilityText = "Pushes adjacent pieces after moving";
-        transform.localScale = new Vector3(.5f, .5f, 1);
+        transform.localScale = new Vector3(.65f, .65f, 1);
     }
 
     public override void specificUpdate()

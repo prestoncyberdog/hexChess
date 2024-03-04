@@ -23,6 +23,7 @@ public class pieceBallista : piece
         shootRange = 3;
         shootDamage = 2;
         desiredRange = shootRange;
+        maxAttackRange = shootRange;
         abilityText = "Shoot damage: " + shootDamage + " + push";
         abilityFearScore = shootDamage + 1;//roughly describes damage of the ability in general
 

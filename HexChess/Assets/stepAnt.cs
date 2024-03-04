@@ -6,7 +6,7 @@ public class stepAnt : piece
 {
     public override void specificInit()
     {
-        pieceName = "Goliath Ant";
+        pieceName = "Goliant";
         moveType = STEP;
         moveRange = 1;
         cost = 0;

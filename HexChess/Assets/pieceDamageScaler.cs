@@ -10,7 +10,7 @@ public class pieceDamageScaler : piece
 
     public override void specificInit()
     {
-        pieceName = "Rampaging Bear";
+        pieceName = "Minotaur";
         moveType = LINE;
         moveRange = 2;
         cost = 6;

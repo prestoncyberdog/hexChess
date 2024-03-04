@@ -6,9 +6,9 @@ public class pieceSwapper : piece
 {
     public override void specificInit()
     {
-        pieceName = "Changeling";
+        pieceName = "Heron";
         moveType = JUMP;
-        moveRange = 3;
+        moveRange = 2;
         cost = 5;
         maxHealth = 3;
         damage = 0;

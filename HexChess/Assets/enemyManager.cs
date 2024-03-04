@@ -78,7 +78,7 @@ public class enemyManager : MonoBehaviour
         findAllPieces(false);
         float value = (calculatePieceScore(pieceWeight) +
                        calculateTargetingScore(targetingWeight, pieceWeight) +
-                       calculateChampionScore(championWeight, targetingWeight) +
+                       calculateChampionScore(championWeight, positionWeight) +
                        calculatePositionScore(positionWeight, inactivePenalty)) *
                        (1 + (Random.Range(0, 10000) / 10000f) * randomizationWeight);
         //Debug.Log("position value: " + value);
@@ -227,7 +227,7 @@ public class enemyManager : MonoBehaviour
 
     //considers whether both champions are alive and healthy
     //championWeight multiplies with the health fraction of each champion
-    public float calculateChampionScore(float championWeight, float targetingWeight)
+    public float calculateChampionScore(float championWeight, float positionWeight)
     {
         float champScore = 0;
         if (gm.champions[0] != null && gm.champions[0].hypoAlive)
@@ -238,7 +238,7 @@ public class enemyManager : MonoBehaviour
         if (gm.champions[1] != null && gm.champions[1].hypoAlive)
         {
             champScore += 10000;
-            champScore += championWeight * gm.champions[0].value * gm.champions[1].hypoHealth * 1f / gm.champions[1].maxHealth;
+            champScore += championWeight * gm.champions[1].value * gm.champions[1].hypoHealth * 1f / gm.champions[1].maxHealth;
         }
         //include targeting onto enemy champion
         //potentialIncomingDamage has already been calculated by the calculateTargetingScore function
@@ -248,7 +248,14 @@ public class enemyManager : MonoBehaviour
         }
         else
         {
-            champScore -= championWeight * targetingWeight * gm.champions[1].value * gm.champions[1].potentialIncomingDamage * 1f / gm.champions[1].maxHealth;
+            //not using targeting weight here, incoming damage to champ should be taken more seriously
+            champScore -= championWeight * gm.champions[1].value * gm.champions[1].potentialIncomingDamage * 1f / gm.champions[1].maxHealth;
+        }
+        //include changes to enemy champion positioning at low health
+        if (gm.champions[1].hypoHealth < gm.champions[1].maxHealth / 2f)
+        {
+            int desiredDist = gm.champions[0].maxAttackRange + 2;
+            champScore -= (championWeight + 1) * positionWeight * Mathf.Abs(gm.champions[1].hypoTile.hypoChampionDists[0] - desiredDist);
         }
 
         //Debug.Log("Champ score: " + champScore);
@@ -263,7 +270,7 @@ public class enemyManager : MonoBehaviour
         float positionScore = 0;
         for (int i = 0; i < enemyPieces.Count; i++)
         {
-            positionScore -= Mathf.Abs(enemyPieces[i].hypoTile.hypoChampionDists[0] - enemyPieces[i].getDesiredRange());//penalize each piece for being farther than min range from the player's champion
+            positionScore -= Mathf.Abs(enemyPieces[i].hypoTile.hypoChampionDists[0] - enemyPieces[i].desiredRange);//penalize each piece for being farther than min range from the player's champion
             if (enemyPieces[i].inactive)
             {
                 positionScore -= inactivePenalty;

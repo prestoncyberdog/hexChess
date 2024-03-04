@@ -21,6 +21,7 @@ public class stepArcher : piece
         shootRange = 2;
         shootDamage = 1;
         desiredRange = shootRange;
+        maxAttackRange = shootRange;
         abilityText = "Shoot damage: " + shootDamage;
         abilityFearScore = shootDamage;//roughly describes damage of the ability in general
 

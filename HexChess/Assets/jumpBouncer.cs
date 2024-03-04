@@ -15,7 +15,7 @@ public class jumpBouncer : piece
         qualityBonus = 0;
 
         abilityText = "Can move again after a kill";
-        transform.localScale = new Vector3(.5f, .5f, 1);
+        transform.localScale = new Vector3(.7f, .7f, 1);
     }
 
     public override void useKillAbility(bool real)

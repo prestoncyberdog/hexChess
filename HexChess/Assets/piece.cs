@@ -20,6 +20,7 @@ public class piece : MonoBehaviour
     public int moveType;
     public int moveRange;
     public int minAttackRange;
+    public int maxAttackRange;
     public float value;
     public int cost;
     public float qualityBonus;
@@ -114,6 +115,14 @@ public class piece : MonoBehaviour
         if (moveType == JUMP)
         {
             minAttackRange = moveRange;
+        }
+        if (maxAttackRange == 0)//if not set for specific piece
+        {
+            maxAttackRange = moveRange;
+        }
+        if (desiredRange == 0)
+        {
+            desiredRange = minAttackRange;
         }
 
         if (hasActivatedAbility)
@@ -802,15 +811,6 @@ public class piece : MonoBehaviour
             hypoExhausted = oldExhausted;
         }
         undoDeathAbility(real);
-    }
-
-    public int getDesiredRange()
-    {
-        if (desiredRange == 0)
-        {
-            return minAttackRange;
-        }
-        return desiredRange;
     }
 
     //moves piece to other slot, swapping if it was occupied
